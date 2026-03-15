@@ -29,14 +29,14 @@ async function main() {
   console.log("✅  Cleared existing data");
 
   // ─── Admins ───────────────────────────────────────────────────────────────
-  const superAdminPwd = await bcrypt.hash("Admin@123", 12);
+  const superAdminPwd = await bcrypt.hash("AWANarham96", 12);
   const viewerPwd = await bcrypt.hash("Viewer@123", 12);
 
   await prisma.admin.createMany({
     data: [
       {
         name: "Super Admin",
-        email: "superadmin@company.com",
+        email: "seobyarham@gmail.com",
         password: superAdminPwd,
         role: "super_admin",
         isActive: true,
