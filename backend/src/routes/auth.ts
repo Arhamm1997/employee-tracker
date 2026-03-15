@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express";
 import { z } from "zod";
 import prisma from "../lib/prisma";
 import { hashPassword, comparePassword } from "../lib/bcrypt";
-import { signUserJwt } from "../lib/jwt";
+import { signAdminJwt } from "../lib/jwt";
 import { logError } from "../lib/logger";
 import { getSeatInfo } from "../lib/seatManagement";
 import { authenticate as authMiddleware, AuthRequest as AuthedRequest } from "../middleware/auth.middleware";
@@ -45,13 +45,6 @@ router.post("/register", async (req: Request, res: Response) => {
 
     const passwordHash = await hashPassword(password);
 
-    const freePlan = await prisma.plan.findUnique({
-      where: { slug: "free" },
-    });
-
-    const trialEnd = new Date();
-    trialEnd.setDate(trialEnd.getDate() + 14);
-
     const company = await prisma.company.create({
       data: {
         name,
@@ -65,17 +58,18 @@ router.post("/register", async (req: Request, res: Response) => {
       data: {
         companyId: company.id,
         email,
-        passwordHash: passwordHash,
+        password: passwordHash,
         name,
         role: "admin",
       },
     });
 
-    const token = signUserJwt({
+    const token = signAdminJwt({
       type: "admin",
-      companyId: company.id,
-      adminId: admin.id,
+      admin_id: admin.id,
+      email: admin.email,
       role: admin.role,
+      is_admin: true,
     });
 
     return res.status(201).json({
@@ -133,7 +127,7 @@ router.post("/login", async (req: Request, res: Response) => {
       });
     }
 
-    const ok = await comparePassword(password, admin.passwordHash);
+    const ok = await comparePassword(password, admin.password);
     if (!ok) {
       return res.status(401).json({
         success: false,
@@ -142,11 +136,12 @@ router.post("/login", async (req: Request, res: Response) => {
       });
     }
 
-    const token = signUserJwt({
+    const token = signAdminJwt({
       type: "admin",
-      companyId: company.id,
-      adminId: admin.id,
+      admin_id: admin.id,
+      email: admin.email,
       role: admin.role,
+      is_admin: true,
     });
 
     return res.json({
@@ -176,7 +171,7 @@ router.get("/me", authMiddleware, async (req: AuthedRequest, res: Response) => {
     }
 
     const company = await prisma.company.findUnique({
-      where: { id: req.admin.companyId },
+      where: { id: req.admin.companyId! },
       include: { subscription: { include: { plan: true } } },
     });
 
