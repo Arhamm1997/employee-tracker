@@ -410,7 +410,7 @@ export function EmployeeDetailPage() {
             {/* Remote Commands */}
             {!planLoading && (
               <div className="flex flex-col gap-2">
-                {hasFeature(seatInfo, "livescreenEnabled") && (
+                {hasFeature(seatInfo, "live_screen") && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -421,7 +421,7 @@ export function EmployeeDetailPage() {
                   Live Screen
                 </Button>
                 )}
-                {hasFeature(seatInfo, "lockEnabled") && (
+                {hasFeature(seatInfo, "lock") && (
                   <Button
                     size="sm"
                     variant="outline"
@@ -432,7 +432,7 @@ export function EmployeeDetailPage() {
                     Lock PC
                   </Button>
                 )}
-                {hasFeature(seatInfo, "shutdownEnabled") && (
+                {hasFeature(seatInfo, "shutdown") && (
                   <Button
                     size="sm"
                     variant="outline"
@@ -499,14 +499,14 @@ export function EmployeeDetailPage() {
       <Tabs defaultValue="charts">
         <TabsList className="w-full justify-start flex-wrap h-auto gap-1">
           <TabsTrigger value="charts">Charts</TabsTrigger>
-          {hasFeature(seatInfo, "screenshotsEnabled") && <TabsTrigger value="screenshots">Screenshots</TabsTrigger>}
-          {hasFeature(seatInfo, "browserHistoryEnabled") && <TabsTrigger value="browser">Browser History</TabsTrigger>}
-          {hasFeature(seatInfo, "alertsEnabled") && <TabsTrigger value="alerts">Alerts</TabsTrigger>}
-          {hasFeature(seatInfo, "usbMonitoringEnabled") && <TabsTrigger value="usb">USB Events</TabsTrigger>}
+          {hasFeature(seatInfo, "screenshots") && <TabsTrigger value="screenshots">Screenshots</TabsTrigger>}
+          {hasFeature(seatInfo, "browserHistory") && <TabsTrigger value="browser">Browser History</TabsTrigger>}
+          {hasFeature(seatInfo, "alerts") && <TabsTrigger value="alerts">Alerts</TabsTrigger>}
+          {hasFeature(seatInfo, "usbMonitoring") && <TabsTrigger value="usb">USB Events</TabsTrigger>}
           <TabsTrigger value="connection">Connection Log</TabsTrigger>
-          {hasFeature(seatInfo, "keylogEnabled") && <TabsTrigger value="keylog">Keylog</TabsTrigger>}
-          {hasFeature(seatInfo, "fileActivityEnabled") && <TabsTrigger value="files">File Activity</TabsTrigger>}
-          {hasFeature(seatInfo, "printLogsEnabled") && <TabsTrigger value="prints">Print Logs</TabsTrigger>}
+          {hasFeature(seatInfo, "keylogger") && <TabsTrigger value="keylog">Keylog</TabsTrigger>}
+          {hasFeature(seatInfo, "file_monitor") && <TabsTrigger value="files">File Activity</TabsTrigger>}
+          {hasFeature(seatInfo, "print_logs") && <TabsTrigger value="prints">Print Logs</TabsTrigger>}
         </TabsList>
 
         {/* Charts Tab */}

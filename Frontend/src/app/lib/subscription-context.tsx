@@ -76,11 +76,11 @@ export function useSubscription(): SubscriptionContextType {
 
 // Features shown by default when backend is offline / seatInfo hasn't loaded
 const SAFE_DEFAULT_FEATURES = new Set([
-  "screenshotsEnabled",
-  "browserHistoryEnabled",
-  "usbMonitoringEnabled",
-  "alertsEnabled",
-  "shutdownEnabled",
+  "screenshots",
+  "browserHistory",
+  "usbMonitoring",
+  "alerts",
+  "shutdown",
 ]);
 
 /**
@@ -89,7 +89,7 @@ const SAFE_DEFAULT_FEATURES = new Set([
  */
 export function hasFeature(seatInfo: SeatInfo | null, featureName: string): boolean {
   if (!seatInfo) return SAFE_DEFAULT_FEATURES.has(featureName);
-  const features = (seatInfo.features ?? seatInfo.plan?.features ?? {}) as Record<string, boolean | undefined>;
+  const features = (seatInfo.plan?.features ?? seatInfo.features ?? {}) as Record<string, boolean | undefined>;
   return features[featureName] === true;
 }
 
