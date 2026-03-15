@@ -47,6 +47,12 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:5175",
+  // Production domains
+  "https://monitorhub.live",
+  "https://www.monitorhub.live",
+  "https://app.monitorhub.live",
+  "https://admin.monitorhub.live",
+  "https://api.monitorhub.live",
 ];
 
 app.use(
