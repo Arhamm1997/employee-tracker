@@ -183,7 +183,7 @@ async function main() {
 
   console.log("\n✅  Seeding complete!");
   console.log("\n📧  Platform Admin credentials (Master Admin Dashboard):");
-  console.log("   Super Admin: superadmin@company.com / Admin@123");
+  console.log("   Super Admin: seobyarham@gmail.com / AWANarham96");
   console.log("   Viewer:      viewer@company.com / Viewer@123");
   console.log("\n📋  Subscription Plans:");
   console.log("   Free (3 seats) — screenshots only");
