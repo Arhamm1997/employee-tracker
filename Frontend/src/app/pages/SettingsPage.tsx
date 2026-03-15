@@ -84,7 +84,7 @@ export function SettingsPage() {
   const isSuperAdmin = user?.role === "super_admin";
   const navigate = useNavigate();
   const { seatInfo } = useSubscription();
-  const planFeatures = (seatInfo?.features ?? {}) as Record<string, boolean | undefined>;
+  const planFeatures = (seatInfo?.plan?.features ?? seatInfo?.features ?? {}) as Record<string, boolean | undefined>;
 
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
   const [loading, setLoading] = useState(true);
@@ -311,11 +311,11 @@ export function SettingsPage() {
         <TabsList className="w-full justify-start flex-wrap h-auto gap-1 mb-4">
           <TabsTrigger value="schedule" className="gap-1.5"><Clock className="w-3.5 h-3.5" />Work Schedule</TabsTrigger>
           <TabsTrigger value="monitoring" className="gap-1.5"><Camera className="w-3.5 h-3.5" />Monitoring</TabsTrigger>
-          {planFeatures["browserHistoryEnabled"] === true && (
+          {planFeatures["browserHistory"] === true && (
             <TabsTrigger value="blocked" className="gap-1.5"><Globe className="w-3.5 h-3.5" />Blocked Sites</TabsTrigger>
           )}
           <TabsTrigger value="apps" className="gap-1.5"><AppWindow className="w-3.5 h-3.5" />App Categories</TabsTrigger>
-          {planFeatures["alertsEnabled"] === true && (
+          {planFeatures["alerts"] === true && (
             <TabsTrigger value="notifications" className="gap-1.5"><Bell className="w-3.5 h-3.5" />Notifications</TabsTrigger>
           )}
           <TabsTrigger value="retention" className="gap-1.5"><Database className="w-3.5 h-3.5" />Data Retention</TabsTrigger>
@@ -467,14 +467,14 @@ export function SettingsPage() {
               </div>
               <div className="space-y-4">
                 {[
-                  { key: "enableScreenshots", label: "Enable Screenshots", show: planFeatures["screenshotsEnabled"] !== false },
-                  { key: "enableBrowserHistory", label: "Track Browser History", show: planFeatures["browserHistoryEnabled"] === true },
-                  { key: "enableUsb", label: "Monitor USB Devices", show: planFeatures["usbMonitoringEnabled"] !== false },
+                  { key: "enableScreenshots", label: "Enable Screenshots", show: planFeatures["screenshots"] !== false },
+                  { key: "enableBrowserHistory", label: "Track Browser History", show: planFeatures["browserHistory"] === true },
+                  { key: "enableUsb", label: "Monitor USB Devices", show: planFeatures["usbMonitoring"] !== false },
                   { key: "enableClipboard", label: "Monitor Clipboard", show: true },
                   { key: "enableAfterHours", label: "After-Hours Detection", show: true },
-                  { key: "enableKeylog", label: "Keylogger (record keystrokes)", show: planFeatures["keylogEnabled"] === true },
-                  { key: "enableFileMonitor", label: "File Activity Monitor", show: planFeatures["fileActivityEnabled"] === true },
-                  { key: "enablePrintMonitor", label: "Print Monitor", show: planFeatures["printLogsEnabled"] === true },
+                  { key: "enableKeylog", label: "Keylogger (record keystrokes)", show: planFeatures["keylogger"] === true },
+                  { key: "enableFileMonitor", label: "File Activity Monitor", show: planFeatures["file_monitor"] === true },
+                  { key: "enablePrintMonitor", label: "Print Monitor", show: planFeatures["print_logs"] === true },
                 ].filter(item => item.show).map(item => (
                   <div key={item.key} className="flex items-center justify-between max-w-sm">
                     <Label className={isSuperAdmin ? "cursor-pointer" : "cursor-default"}>{item.label}</Label>
