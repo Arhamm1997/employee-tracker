@@ -2,7 +2,13 @@ import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import { generateSecret, generateURI, generateSync, verifySync } from "otplib";
+import { authenticator } from "otplib";
+const generateSecret = () => authenticator.generateSecret();
+const generateURI = ({ secret, label, issuer }: { secret: string; label: string; issuer: string }) =>
+  authenticator.keyuri(label, issuer, secret);
+const verifySync = ({ token, secret }: { token: string; secret: string }) =>
+  authenticator.check(token, secret);
+const generateSync = ({ secret }: { secret: string }) => authenticator.generate(secret);
 import QRCode from "qrcode";
 import { z } from "zod";
 import { body, validationResult } from "express-validator";
