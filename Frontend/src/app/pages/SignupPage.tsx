@@ -8,14 +8,14 @@ import { Button } from "../components/ui/button";
 import { Label } from "../components/ui/label";
 import { toast } from "sonner";
 
-const API_BASE = (import.meta as { env?: Record<string, string> }).env?.VITE_API_URL || "http://localhost:5000";
+const API_BASE = (import.meta as { env?: Record<string, string> }).env?.VITE_API_URL || "http://localhost:5000/api";
 
 async function apiRegister(data: {
   companyName: string;
   email: string;
   password: string;
 }) {
-  const res = await fetch(`${API_BASE}/api/company/auth/register`, {
+  const res = await fetch(`${API_BASE}/company/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),

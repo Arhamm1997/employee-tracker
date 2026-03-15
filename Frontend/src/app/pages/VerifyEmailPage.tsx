@@ -6,21 +6,21 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../co
 import { Button } from "../components/ui/button";
 import { toast } from "sonner";
 
-const API_BASE = (import.meta as { env?: Record<string, string> }).env?.VITE_API_URL || "http://localhost:5001";
+const API_BASE = (import.meta as { env?: Record<string, string> }).env?.VITE_API_URL || "http://localhost:5001/api";
 
 const PORTAL_URL =
   (import.meta as { env?: Record<string, string> }).env?.VITE_PORTAL_URL ||
   "http://localhost:3001";
 
 async function apiVerifyEmail(token: string) {
-  const res = await fetch(`${API_BASE}/api/company/auth/verify-email?token=${token}`);
+  const res = await fetch(`${API_BASE}/company/auth/verify-email?token=${token}`);
   const json = await res.json();
   if (!res.ok) throw new Error(json.message || "Verification failed");
   return json;
 }
 
 async function apiResendVerification(email: string) {
-  const res = await fetch(`${API_BASE}/api/company/auth/resend-verification`, {
+  const res = await fetch(`${API_BASE}/company/auth/resend-verification`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),
@@ -44,17 +44,13 @@ export function VerifyEmailPage() {
   const [resendCooldown, setResendCooldown] = useState(0);
   const [status, setStatus] = useState<VerifyStatus>(token ? "verifying" : "idle");
   const [errorMsg, setErrorMsg] = useState("");
-  const [verifiedToken, setVerifiedToken] = useState("");
 
   // Auto-verify if token present in URL
   useEffect(() => {
     if (!token) return;
     setStatus("verifying");
     apiVerifyEmail(token)
-      .then((data: { token?: string }) => {
-        if (data?.token) setVerifiedToken(data.token);
-        setStatus("success");
-      })
+      .then(() => setStatus("success"))
       .catch(err => {
         setStatus("error");
         setErrorMsg(err instanceof Error ? err.message : "Verification failed");
@@ -124,11 +120,7 @@ export function VerifyEmailPage() {
                   Now select a plan to activate your account.
                 </p>
               </div>
-              <a
-                href={verifiedToken ? `${PORTAL_URL}/select-plan?company_token=${encodeURIComponent(verifiedToken)}` : `${PORTAL_URL}/select-plan`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+              <a href={`${PORTAL_URL}/select-plan`} target="_blank" rel="noopener noreferrer">
                 <Button className="w-full bg-[#6366f1] hover:bg-[#5558e6]">
                   Choose a Plan →
                 </Button>

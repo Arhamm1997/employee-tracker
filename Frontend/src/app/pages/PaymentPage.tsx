@@ -10,7 +10,7 @@ import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { toast } from "sonner";
 
-const API_BASE = (import.meta as { env?: Record<string, string> }).env?.VITE_API_URL || "http://localhost:5001";
+const API_BASE = (import.meta as { env?: Record<string, string> }).env?.VITE_API_URL || "http://localhost:5001/api";
 
 const PORTAL_URL =
   (import.meta as { env?: Record<string, string> }).env?.VITE_PORTAL_URL ||
@@ -45,7 +45,7 @@ interface Invoice {
 // ── API helpers ─────────────────────────────────────────────────────────────
 
 async function apiGetPaymentSettings(): Promise<PaymentSettings> {
-  const res = await fetch(`${API_BASE}/api/payment/settings`);
+  const res = await fetch(`${API_BASE}/payment/settings`);
   const json = await res.json();
   if (!res.ok) throw new Error(json.message || "Failed to load payment settings");
   return json;
@@ -53,7 +53,7 @@ async function apiGetPaymentSettings(): Promise<PaymentSettings> {
 
 async function apiGetInvoice(invoiceId: string): Promise<Invoice> {
   const token = localStorage.getItem("company_token");
-  const res = await fetch(`${API_BASE}/api/payment/invoice/${invoiceId}`, {
+  const res = await fetch(`${API_BASE}/payment/invoice/${invoiceId}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     credentials: "include",
   });
@@ -66,7 +66,7 @@ async function apiUploadScreenshot(invoiceId: string, file: File): Promise<void>
   const token = localStorage.getItem("company_token");
   const fd = new FormData();
   fd.append("screenshot", file);
-  const res = await fetch(`${API_BASE}/api/payment/upload-screenshot/${invoiceId}`, {
+  const res = await fetch(`${API_BASE}/payment/upload-screenshot/${invoiceId}`, {
     method: "POST",
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     credentials: "include",
