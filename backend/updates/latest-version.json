@@ -1,0 +1,8 @@
+{
+  "version": "1.0.0",
+  "download_url": "http://YOUR_VPS_IP:3000/api/agents/download/agent-v1.0.0.exe",
+  "release_notes": "Initial release",
+  "released_at": "2026-01-01T00:00:00Z",
+  "min_required_version": "1.0.0"
+}
+

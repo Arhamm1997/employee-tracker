@@ -1,0 +1,1 @@
+powershell -ExecutionPolicy Bypass -File "C:\Projects\Employee Tracker\deploy.ps1"

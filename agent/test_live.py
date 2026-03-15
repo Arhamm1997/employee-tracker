@@ -1,0 +1,20 @@
+import asyncio, json, websockets
+
+config = json.load(open(r"C:\ProgramData\EmployeeMonitor\config.json"))
+url = config.get("serverUrl", "").rstrip("/")
+token = config.get("agentToken", "")
+ws_url = url.replace("https://", "wss://").replace("http://", "ws://")
+ws_url = f"{ws_url}/api/ws?agentToken={token}"
+
+print(f"Connecting to: {ws_url}")
+
+async def test():
+    try:
+        async with websockets.connect(ws_url) as ws:
+            print("SUCCESS - Connected!")
+            msg = await asyncio.wait_for(ws.recv(), timeout=5)
+            print(f"Got message: {msg}")
+    except Exception as e:
+        print(f"FAILED: {type(e).__name__}: {e}")
+
+asyncio.run(test())

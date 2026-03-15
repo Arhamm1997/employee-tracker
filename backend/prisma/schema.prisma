@@ -1,0 +1,545 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── MULTI-TENANCY: Company (Tenant Root) ────────────────────────────────────
+
+model Company {
+  id               String  @id @default(cuid())
+  name             String
+  email            String  @unique
+  passwordHash     String
+  emailVerified    Boolean @default(false)
+  twoFactorSecret  String?
+  twoFactorEnabled Boolean @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  admins                  Admin[]
+  employees               Employee[]
+  activities              Activity[]
+  screenshots             Screenshot[]
+  alerts                  Alert[]
+  settings                Settings[]
+  subscription            Subscription?
+  invoices                Invoice[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
+}
+
+// ─── MULTI-TENANCY: Plan ──────────────────────────────────────────────────────
+
+model Plan {
+  id                    String  @id @default(cuid())
+  name                  String
+  priceMonthly          Float
+  priceYearly           Float
+  maxSeats              Int     // -1 = unlimited
+  maxAdmins             Int     @default(1) // -1 = unlimited
+  screenshotsEnabled    Boolean @default(true)
+  browserHistoryEnabled Boolean @default(false)
+  usbMonitoringEnabled  Boolean @default(false)
+  alertsEnabled         Boolean @default(false)
+  keylogEnabled         Boolean @default(false)
+  fileActivityEnabled   Boolean @default(false)
+  printLogsEnabled      Boolean @default(false)
+  advancedReports       Boolean @default(false)
+  shutdownEnabled       Boolean @default(false)
+  livescreenEnabled     Boolean @default(false)
+  lockEnabled           Boolean @default(false)
+  isActive              Boolean @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  subscriptions Subscription[]
+  invoices      Invoice[]
+}
+
+// ─── MULTI-TENANCY: Subscription ─────────────────────────────────────────────
+
+model Subscription {
+  id                 String   @id @default(cuid())
+  companyId          String   @unique
+  planId             String
+  status             String   // ACTIVE | CANCELLED | EXPIRED
+  billingCycle       String   @default("monthly") // "monthly" | "yearly"
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id])
+  plan    Plan    @relation(fields: [planId], references: [id])
+
+  @@index([planId])
+  @@index([status])
+}
+
+// ─── MULTI-TENANCY: Email & Password Tokens ───────────────────────────────────
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  companyId String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@index([companyId])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  companyId String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@index([companyId])
+}
+
+// ─── Admin ────────────────────────────────────────────────────────────────────
+// companyId = null  → platform-level super admin (master dashboard)
+// companyId = set   → tenant-scoped admin (company dashboard)
+
+model Admin {
+  id                  String    @id @default(cuid())
+  companyId           String?
+  email               String    @unique
+  password            String
+  name                String
+  role                String    @default("viewer") // super_admin | viewer
+  isActive            Boolean   @default(true)
+  lastLoginAt         DateTime?
+  createdAt           DateTime  @default(now())
+
+  // 2FA
+  twoFactorSecret     String?
+  twoFactorEnabled    Boolean   @default(false)
+
+  company                  Company?                  @relation(fields: [companyId], references: [id])
+  adminPasswordResetTokens AdminPasswordResetToken[]
+
+  // ── Auth: refresh token rotation (one family per device/session) ──────────
+  refreshTokens        AdminRefreshToken[]
+
+  @@index([companyId])
+}
+
+model AdminPasswordResetToken {
+  id        String   @id @default(cuid())
+  adminId   String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  admin Admin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+}
+
+// ─── Admin Refresh Token ──────────────────────────────────────────────────────
+// One row per issued refresh token.
+// On use → delete old row, insert new row with same familyId (rotation).
+// On reuse detected (token already gone but familyId exists) → revoke whole family.
+// Stored in httpOnly cookie as: rt=<token>; Secure; SameSite=Strict; Path=/api/auth
+//
+// JWT access token payload: { sub: adminId, companyId, role, type: "admin" }
+// Refresh token payload   : { sub: adminId, companyId, family: familyId, type: "admin_rt" }
+
+model AdminRefreshToken {
+  id         String   @id @default(cuid())
+  adminId    String
+  companyId  String?  // denormalised for fast multi-company isolation checks
+  tokenHash  String   @unique // SHA-256 of the raw token (never store plaintext)
+  familyId   String   // all rotations of one session share this id
+  userAgent  String?
+  ipAddress  String?
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  isRevoked  Boolean  @default(false)
+
+  admin Admin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@index([familyId])
+  @@index([companyId])
+}
+
+// ─── Employee (Agent) ─────────────────────────────────────────────────────────
+// agentKey   → one-time installer secret; agent POSTs it to /api/agent/register
+//              to receive its first agentToken JWT + refresh token.
+// agentToken → short-lived JWT (15 min) used as Bearer token on every agent request.
+//              Regenerated on each refresh cycle; stored here so the backend can
+//              detect stale tokens during offline detection.
+
+model Employee {
+  id             String    @id @default(cuid())
+  companyId      String?   // Phase 2: make non-nullable after backfill
+  employeeCode   String    @unique
+  name           String
+  email          String    @unique
+  department     String
+  avatar         String?
+  isActive       Boolean   @default(true)
+
+  // ── Agent authentication ──────────────────────────────────────────────────
+  agentKey       String    @unique   // installer secret; invalidated after first registration
+  agentKeyUsed   Boolean   @default(false) // flipped to true once agent registers
+  agentToken     String    @unique   // current short-lived JWT (cached for offline detection)
+  agentVersion   String?
+  lastSeenAt     DateTime?
+
+  pendingCommand String?   // lock | shutdown | null
+  createdAt      DateTime  @default(now())
+
+  company Company? @relation(fields: [companyId], references: [id])
+
+  activities       Activity[]
+  screenshots      Screenshot[]
+  alerts           Alert[]
+  browserHistory   BrowserHistory[]
+  usbEvents        UsbEvent[]
+  clipboardLogs    ClipboardLog[]
+  connectionEvents ConnectionEvent[]
+  keylogEntries    KeylogEntry[]
+  fileActivities   FileActivity[]
+  printLogs        PrintLog[]
+
+  // ── Agent refresh token rotation ──────────────────────────────────────────
+  agentRefreshTokens AgentRefreshToken[]
+
+  @@index([companyId])
+}
+
+// ─── Agent Refresh Token ──────────────────────────────────────────────────────
+// Flow:
+//   1. Agent POSTs agentKey → receives accessToken (JWT, 15 min) +
+//      refreshToken (opaque, 30 days) set as httpOnly cookie OR
+//      returned in body (agent client stores it securely on disk).
+//   2. When accessToken expires, agent POSTs refreshToken →
+//      receives new accessToken + new refreshToken (old one deleted).
+//   3. Reuse attack: if refreshToken already consumed (row gone) but
+//      familyId still exists → all tokens in family revoked, agent must
+//      re-register with agentKey (or admin re-issues one).
+//
+// JWT access token payload: { sub: employeeId, companyId, type: "agent" }
+// Refresh token payload   : { sub: employeeId, family: familyId, type: "agent_rt" }
+
+model AgentRefreshToken {
+  id         String   @id @default(cuid())
+  employeeId String
+  companyId  String?  // denormalised for fast tenant isolation checks
+  tokenHash  String   @unique // SHA-256 of raw token
+  familyId   String   // all rotations of one agent session share this id
+  deviceInfo String?  // agent version + OS fingerprint
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  isRevoked  Boolean  @default(false)
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@index([familyId])
+  @@index([companyId])
+}
+
+// ─── Activity ─────────────────────────────────────────────────────────────────
+
+model Activity {
+  id           String   @id @default(cuid())
+  employeeId   String
+  companyId    String?
+  appName      String
+  windowTitle  String
+  isIdle       Boolean  @default(false)
+  isProductive Boolean  @default(true)
+  isAfterHours Boolean  @default(false)
+  timestamp    DateTime @default(now())
+
+  employee Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  company  Company?  @relation(fields: [companyId], references: [id])
+
+  @@index([employeeId, timestamp])
+  @@index([companyId, timestamp])
+}
+
+// ─── Screenshot ───────────────────────────────────────────────────────────────
+
+model Screenshot {
+  id           String   @id @default(cuid())
+  employeeId   String
+  companyId    String?
+  imageUrl     String
+  appName      String
+  windowTitle  String
+  monitorCount Int      @default(1)
+  cloudinaryId String?
+  timestamp    DateTime @default(now())
+
+  employee Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  company  Company?  @relation(fields: [companyId], references: [id])
+
+  @@index([employeeId, timestamp])
+  @@index([companyId, timestamp])
+}
+
+// ─── Alert ────────────────────────────────────────────────────────────────────
+
+model Alert {
+  id         String   @id @default(cuid())
+  employeeId String
+  companyId  String?
+  type       String   // blocked_site | idle_long | new_software | after_hours | usb_connected | clipboard_sensitive | low_activity
+  message    String
+  severity   String   // high | medium | low
+  metadata   Json?
+  isRead     Boolean  @default(false)
+  emailSent  Boolean  @default(false)
+  timestamp  DateTime @default(now())
+
+  employee Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  company  Company?  @relation(fields: [companyId], references: [id])
+
+  @@index([employeeId, timestamp])
+  @@index([companyId, timestamp])
+  @@index([isRead])
+}
+
+// ─── Settings ─────────────────────────────────────────────────────────────────
+
+model Settings {
+  id                      String   @id @default(cuid())
+  companyId               String?
+  workStartTime           String   @default("09:00")
+  workEndTime             String   @default("18:00")
+  workDays                String[] @default(["Mon", "Tue", "Wed", "Thu", "Fri"])
+  timezone                String   @default("Asia/Karachi")
+  screenshotInterval      Int      @default(10)
+  screenshotQuality       Int      @default(60)
+  idleThreshold           Int      @default(5)
+  screenshotsEnabled      Boolean  @default(true)
+  browserHistoryEnabled   Boolean  @default(true)
+  usbMonitoringEnabled    Boolean  @default(true)
+  clipboardEnabled        Boolean  @default(false)
+  afterHoursEnabled       Boolean  @default(true)
+  blockedSites            String[]
+  productiveApps          String[]
+  nonProductiveApps       String[]
+  neutralApps             String[]
+  alertEmails             String[]
+  alertOnBlockedSite      Boolean  @default(true)
+  alertOnIdle             Boolean  @default(true)
+  alertOnUsb              Boolean  @default(true)
+  alertOnAfterHours       Boolean  @default(true)
+  alertOnNewSoftware      Boolean  @default(true)
+  idleAlertThreshold      Int      @default(30)
+  activityRetentionDays   Int      @default(90)
+  screenshotRetentionDays Int      @default(30)
+  alertRetentionDays      Int      @default(60)
+  maxEmployees            Int      @default(10)
+  keylogEnabled           Boolean  @default(false)
+  fileMonitorEnabled      Boolean  @default(false)
+  printMonitorEnabled     Boolean  @default(false)
+  updatedAt               DateTime @updatedAt
+
+  company Company? @relation(fields: [companyId], references: [id])
+
+  @@index([companyId])
+}
+
+// ─── Agent Infrastructure ─────────────────────────────────────────────────────
+
+model AgentUpdate {
+  id          String   @id @default(cuid())
+  version     String
+  downloadUrl String
+  changelog   String
+  isLatest    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model AgentVersion {
+  id                String   @id @default(cuid())
+  version           String
+  fileName          String
+  filePath          String
+  checksum          String
+  watchdogFileName  String?
+  watchdogFilePath  String?
+  watchdogChecksum  String?
+  isLatest          Boolean  @default(false)
+  releaseNotes      String?
+  createdAt         DateTime @default(now())
+}
+
+// ─── Monitoring Models ────────────────────────────────────────────────────────
+
+model BrowserHistory {
+  id         String   @id @default(cuid())
+  employeeId String
+  browser    String   // chrome | edge | firefox
+  url        String
+  title      String
+  visitedAt  DateTime
+  duration   Int?     // seconds spent
+  isBlocked  Boolean  @default(false)
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId, visitedAt])
+}
+
+model UsbEvent {
+  id         String   @id @default(cuid())
+  employeeId String
+  deviceName String
+  deviceType String
+  action     String   // connected | disconnected
+  timestamp  DateTime @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId, timestamp])
+}
+
+model ClipboardLog {
+  id         String   @id @default(cuid())
+  employeeId String
+  content    String   // first 500 chars only
+  appName    String
+  timestamp  DateTime @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId, timestamp])
+}
+
+model ConnectionEvent {
+  id         String   @id @default(cuid())
+  employeeId String
+  event      String   // online | offline | shutdown
+  timestamp  DateTime @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId, timestamp])
+}
+
+model KeylogEntry {
+  id         String   @id @default(cuid())
+  employeeId String
+  appName    String
+  keys       String   // text buffer
+  timestamp  DateTime @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId, timestamp])
+}
+
+model FileActivity {
+  id         String   @id @default(cuid())
+  employeeId String
+  action     String   // opened | created | modified | deleted | copied | renamed
+  filePath   String
+  appName    String
+  timestamp  DateTime @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId, timestamp])
+}
+
+model PrintLog {
+  id         String   @id @default(cuid())
+  employeeId String
+  printer    String
+  document   String
+  pages      Int      @default(1)
+  appName    String
+  timestamp  DateTime @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId, timestamp])
+}
+
+// ─── Billing ──────────────────────────────────────────────────────────────────
+
+model Invoice {
+  id                String    @id @default(cuid())
+  invoiceNumber     String    @unique
+  companyId         String
+  planId            String
+  billingCycle      String    // "monthly" | "yearly"
+  amount            Float
+  currency          String    @default("PKR")
+  status            String    @default("PENDING") // PENDING | PAID | REJECTED
+  paidAt            DateTime?
+  paymentMethod     String?   // "easypaisa" | "nayapay" | "sadapay" | "bank"
+  paymentScreenshot String?
+  verifiedBy        String?
+  verifiedAt        DateTime?
+  rejectionReason   String?
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id])
+  plan    Plan    @relation(fields: [planId], references: [id])
+
+  @@index([companyId])
+  @@index([status])
+}
+
+model PaymentSettings {
+  id               String   @id @default(cuid())
+
+  bankName         String   @default("UBL")
+  bankIban         String   @default("")
+  bankTitle        String   @default("")
+
+  easypaisaNumber  String   @default("")
+  easypaisaName    String   @default("")
+
+  nayapayNumber    String   @default("")
+  nayapayName      String   @default("")
+
+  sadapayNumber    String   @default("")
+  sadapayName      String   @default("")
+
+  jsbankNumber     String   @default("")
+  jsbankName       String   @default("")
+
+  whatsappNumber   String   @default("")
+  instructions     String   @default("")
+
+  updatedAt        DateTime @updatedAt
+}
+
+// ─── Audit Log ──────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  company_id  String
+  user_id     String?
+  action      String
+  entity_type String?
+  entity_id   String?
+  changes     Json?
+  ip_address  String?
+  created_at  DateTime @default(now())
+
+  @@index([company_id])
+  @@index([action])
+  @@index([created_at])
+}

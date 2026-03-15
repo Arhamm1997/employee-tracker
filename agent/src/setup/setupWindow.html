@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>StaffTrack Agent Setup</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 16px;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background-color: #020617;
+        color: #e5e7eb;
+      }
+      h1 {
+        font-size: 18px;
+        margin-bottom: 4px;
+      }
+      p {
+        font-size: 12px;
+        margin-top: 0;
+        margin-bottom: 16px;
+        color: #9ca3af;
+      }
+      label {
+        font-size: 12px;
+        display: block;
+        margin-bottom: 4px;
+      }
+      input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 6px 8px;
+        border-radius: 4px;
+        border: 1px solid #1f2937;
+        background-color: #020617;
+        color: #e5e7eb;
+        font-size: 12px;
+        margin-bottom: 10px;
+      }
+      button {
+        width: 100%;
+        padding: 8px;
+        border-radius: 4px;
+        border: none;
+        background-color: #4f46e5;
+        color: #f9fafb;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+      #error {
+        margin-top: 8px;
+        font-size: 11px;
+        color: #f97373;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>StaffTrack Agent Setup</h1>
+    <p>Paste your company token and employee ID to register this computer.</p>
+    <div>
+      <label for="companyToken">Company Token</label>
+      <input
+        id="companyToken"
+        type="text"
+        placeholder="Paste your company token here"
+        autocomplete="off"
+      />
+    </div>
+    <div>
+      <label for="employeeId">Employee ID</label>
+      <input
+        id="employeeId"
+        type="text"
+        placeholder="Enter employee ID"
+        autocomplete="off"
+      />
+    </div>
+    <button id="registerBtn">Register</button>
+    <div id="error"></div>
+
+    <script>
+      const button = document.getElementById("registerBtn");
+      const errorDiv = document.getElementById("error");
+
+      function setError(message) {
+        if (!errorDiv) return;
+        if (message) {
+          errorDiv.textContent = message;
+          errorDiv.style.display = "block";
+        } else {
+          errorDiv.textContent = "";
+          errorDiv.style.display = "none";
+        }
+      }
+
+      button?.addEventListener("click", async () => {
+        const tokenInput = document.getElementById("companyToken");
+        const employeeInput = document.getElementById("employeeId");
+        if (!(tokenInput instanceof HTMLInputElement) || !(employeeInput instanceof HTMLInputElement)) {
+          return;
+        }
+        const companyToken = tokenInput.value.trim();
+        const employeeId = employeeInput.value.trim();
+        if (!companyToken || !employeeId) {
+          setError("Please enter both company token and employee ID.");
+          return;
+        }
+        setError("");
+        button.disabled = true;
+        button.textContent = "Registering...";
+        try {
+          // Exposed by preload script via contextBridge
+          // @ts-ignore
+          await window.stafftrackSetup.register(companyToken, employeeId);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Registration failed.";
+          setError(message);
+          button.disabled = false;
+          button.textContent = "Register";
+          return;
+        }
+      });
+    </script>
+  </body>
+  </html>
+
