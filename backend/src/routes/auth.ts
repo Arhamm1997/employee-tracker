@@ -56,31 +56,26 @@ router.post("/register", async (req: Request, res: Response) => {
       data: {
         name,
         email,
-        password_hash: passwordHash,
-        plan_id: freePlan?.id ?? null,
-        subscription_status: "trial",
-        is_trial: true,
-        trial_start: new Date(),
-        trial_end: trialEnd,
-        current_admin_count: 1,
+        passwordHash: passwordHash,
+        emailVerified: false,
       },
     });
 
-    const user = await prisma.user.create({
+    const admin = await prisma.admin.create({
       data: {
-        company_id: company.id,
+        companyId: company.id,
         email,
-        password_hash: passwordHash,
-        full_name: name,
+        passwordHash: passwordHash,
+        name,
         role: "admin",
       },
     });
 
     const token = signUserJwt({
-      type: "user",
-      company_id: company.id,
-      user_id: user.id,
-      role: user.role,
+      type: "admin",
+      companyId: company.id,
+      adminId: admin.id,
+      role: admin.role,
     });
 
     return res.status(201).json({
@@ -115,7 +110,7 @@ router.post("/login", async (req: Request, res: Response) => {
 
     const company = await prisma.company.findUnique({
       where: { email },
-      include: { plan: true },
+      include: { subscription: { include: { plan: true } } },
     });
 
     if (!company) {
@@ -126,11 +121,11 @@ router.post("/login", async (req: Request, res: Response) => {
       });
     }
 
-    const user = await prisma.user.findFirst({
-      where: { company_id: company.id, email },
+    const admin = await prisma.admin.findFirst({
+      where: { companyId: company.id, email },
     });
 
-    if (!user) {
+    if (!admin) {
       return res.status(401).json({
         success: false,
         error: "Invalid credentials",
@@ -138,7 +133,7 @@ router.post("/login", async (req: Request, res: Response) => {
       });
     }
 
-    const ok = await comparePassword(password, user.password_hash);
+    const ok = await comparePassword(password, admin.passwordHash);
     if (!ok) {
       return res.status(401).json({
         success: false,
@@ -148,10 +143,10 @@ router.post("/login", async (req: Request, res: Response) => {
     }
 
     const token = signUserJwt({
-      type: "user",
-      company_id: company.id,
-      user_id: user.id,
-      role: user.role,
+      type: "admin",
+      companyId: company.id,
+      adminId: admin.id,
+      role: admin.role,
     });
 
     return res.json({
@@ -172,7 +167,7 @@ router.post("/login", async (req: Request, res: Response) => {
 
 router.get("/me", authMiddleware, async (req: AuthedRequest, res: Response) => {
   try {
-    if (!req.company || !req.user) {
+    if (!req.admin) {
       return res.status(401).json({
         success: false,
         error: "Authentication required",
@@ -181,8 +176,8 @@ router.get("/me", authMiddleware, async (req: AuthedRequest, res: Response) => {
     }
 
     const company = await prisma.company.findUnique({
-      where: { id: req.company.id },
-      include: { plan: true },
+      where: { id: req.admin.companyId },
+      include: { subscription: { include: { plan: true } } },
     });
 
     if (!company) {
@@ -202,22 +197,22 @@ router.get("/me", authMiddleware, async (req: AuthedRequest, res: Response) => {
           id: company.id,
           name: company.name,
           email: company.email,
-          subscription_status: company.subscription_status,
-          is_trial: company.is_trial,
-          trial_end: company.trial_end,
-          plan: company.plan
+          subscription_status: company.subscription?.status ?? null,
+          is_trial: false, // TODO: implement trial logic
+          trial_end: null,
+          plan: company.subscription?.plan
             ? {
-                id: company.plan.id,
-                name: company.plan.name,
-                slug: company.plan.slug,
-                price_pkr: company.plan.price_pkr,
+                id: company.subscription.plan.id,
+                name: company.subscription.plan.name,
+                priceMonthly: company.subscription.plan.priceMonthly,
+                priceYearly: company.subscription.plan.priceYearly,
               }
             : null,
         },
         user: {
-          id: req.user.id,
-          email: req.user.email,
-          role: req.user.role,
+          id: req.admin.id,
+          email: req.admin.email,
+          role: req.admin.role,
         },
         seats: seatInfo,
       },
