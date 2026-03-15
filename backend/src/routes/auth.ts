@@ -1,11 +1,11 @@
 import { Router, Request, Response } from "express";
 import { z } from "zod";
-import { prisma } from "../lib/prisma";
+import prisma from "../lib/prisma";
 import { hashPassword, comparePassword } from "../lib/bcrypt";
 import { signUserJwt } from "../lib/jwt";
 import { logError } from "../lib/logger";
-import { calculateSeatInfo } from "../lib/seatManagement";
-import { authMiddleware, AuthedRequest } from "../middleware/auth.middleware";
+import { getSeatInfo } from "../lib/seatManagement";
+import { authenticate as authMiddleware, AuthRequest as AuthedRequest } from "../middleware/auth.middleware";
 
 const router = Router();
 
@@ -193,7 +193,7 @@ router.get("/me", authMiddleware, async (req: AuthedRequest, res: Response) => {
       });
     }
 
-    const seatInfo = calculateSeatInfo(company.plan ?? null, company);
+    const seatInfo = await getSeatInfo(company.id);
 
     return res.json({
       success: true,

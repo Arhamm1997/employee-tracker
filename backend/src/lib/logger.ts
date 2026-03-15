@@ -59,3 +59,7 @@ const logger = winston.createLogger({
 });
 
 export default logger;
+
+export const logError = (error: any, tag: string) => {
+  logger.error(`${tag}: ${error.message || error}`, error);
+};

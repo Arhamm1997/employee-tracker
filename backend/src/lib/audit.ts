@@ -20,7 +20,7 @@ export async function logAudit(context: AuditContext): Promise<void> {
         action: context.action,
         entity_type: context.entityType,
         entity_id: context.entityId,
-        changes: context.changes ?? null,
+        changes: context.changes ?? undefined,
         ip_address: context.ipAddress ?? null,
       },
     });
