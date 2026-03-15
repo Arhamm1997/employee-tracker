@@ -531,7 +531,14 @@ router.delete("/:id", async (req: AdminRequest, res: Response) => {
       await prisma.employee.deleteMany({ where: { companyId: req.params.id } });
     }
 
+    // Delete AgentRefreshTokens for company employees
+    if (employeeIds.length > 0) {
+      await prisma.agentRefreshToken.deleteMany({ where: { companyId: req.params.id } });
+    }
+
     await Promise.all([
+      prisma.invoice.deleteMany({ where: { companyId: req.params.id } }),
+      prisma.auditLog.deleteMany({ where: { company_id: req.params.id } }),
       prisma.admin.deleteMany({ where: { companyId: req.params.id } }),
       prisma.settings.deleteMany({ where: { companyId: req.params.id } }),
       prisma.subscription.deleteMany({ where: { companyId: req.params.id } }),
