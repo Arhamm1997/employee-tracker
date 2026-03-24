@@ -17,8 +17,9 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage,
   fileFilter: (_req, file, cb) => {
-    if (file.originalname.toLowerCase().endsWith(".exe")) cb(null, true);
-    else cb(new Error("Only .exe files are allowed"));
+    const name = file.originalname.toLowerCase();
+    if (name.endsWith(".exe") || name.endsWith(".zip")) cb(null, true);
+    else cb(new Error("Only .exe or .zip files are allowed"));
   },
   limits: { fileSize: 150 * 1024 * 1024 }, // 150 MB
 });

@@ -6,9 +6,10 @@ import { Response, NextFunction } from "express";
 import prisma from "../lib/prisma";
 import { AgentRequest } from "./agentAuth.middleware";
 
-type AgentFeature = "browserHistory" | "usbMonitoring" | "keylog" | "fileActivity" | "printLogs";
+type AgentFeature = "screenshots" | "browserHistory" | "usbMonitoring" | "keylog" | "fileActivity" | "printLogs";
 
-const FEATURE_PLAN_FIELD: Record<AgentFeature, "browserHistoryEnabled" | "usbMonitoringEnabled" | "keylogEnabled" | "fileActivityEnabled" | "printLogsEnabled"> = {
+const FEATURE_PLAN_FIELD: Record<AgentFeature, "screenshotsEnabled" | "browserHistoryEnabled" | "usbMonitoringEnabled" | "keylogEnabled" | "fileActivityEnabled" | "printLogsEnabled"> = {
+  screenshots:    "screenshotsEnabled",
   browserHistory: "browserHistoryEnabled",
   usbMonitoring:  "usbMonitoringEnabled",
   keylog:         "keylogEnabled",

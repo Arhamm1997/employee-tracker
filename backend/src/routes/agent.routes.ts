@@ -36,7 +36,7 @@ router.use(authenticateAgent);
 
 router.get("/verify", verifyAgent);
 router.post("/heartbeat", heartbeatValidation, heartbeat);
-router.post("/screenshot", screenshotUpload.single("screenshot"), uploadScreenshot);
+router.post("/screenshot", checkAgentFeature("screenshots"), screenshotUpload.single("screenshot"), uploadScreenshot);
 router.post("/browser-history", checkAgentFeature("browserHistory"), saveBrowserHistory); // ✅ plan check
 router.post("/usb-event", checkAgentFeature("usbMonitoring"), saveUsbEvent); // ✅ plan check
 router.post("/new-software", reportNewSoftware);

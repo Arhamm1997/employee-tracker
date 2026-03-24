@@ -96,8 +96,9 @@ export default function AgentVersions() {
   };
 
   const uploadExe = async (file: File): Promise<UploadedFile | null> => {
-    if (!file.name.toLowerCase().endsWith('.exe')) {
-      toast.error('Only .exe files are accepted');
+    const name = file.name.toLowerCase();
+    if (!name.endsWith('.exe') && !name.endsWith('.zip')) {
+      toast.error('Only .exe or .zip files are accepted');
       return null;
     }
     const formData = new FormData();
@@ -261,12 +262,20 @@ export default function AgentVersions() {
 
           <div className="space-y-4 py-2">
             {/* Hidden file inputs */}
-            <input ref={fileInputRef} type="file" accept=".exe" className="hidden" onChange={handleFileChange} />
-            <input ref={watchdogInputRef} type="file" accept=".exe" className="hidden" onChange={handleWatchdogChange} />
+            <input ref={fileInputRef} type="file" accept=".exe,.zip" className="hidden" onChange={handleFileChange} />
+            <input ref={watchdogInputRef} type="file" accept=".exe,.zip" className="hidden" onChange={handleWatchdogChange} />
+
+            {/* Chrome tip */}
+            <div className="flex items-start gap-2 p-2.5 rounded-md border border-amber-200 bg-amber-50 text-amber-800 text-xs">
+              <span className="mt-0.5">⚠️</span>
+              <span>
+                <strong>Tip:</strong> Upload the .exe files wrapped in a <strong>.zip</strong> archive to avoid Chrome&apos;s &quot;dangerous file&quot; warning when users download them. Chrome does not block .zip files.
+              </span>
+            </div>
 
             {/* Step 1: EmployeeMonitor.exe */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Step 1 — EmployeeMonitor.exe *</Label>
+              <Label className="text-sm font-medium">Step 1 — EmployeeMonitor.exe (or .zip) *</Label>
               {uploadedFile ? (
                 <div className="flex items-start gap-3 p-3 rounded-lg border border-green-200 bg-green-50">
                   <FileCheck className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
@@ -284,14 +293,14 @@ export default function AgentVersions() {
                   className="w-full h-14 border-dashed flex-col gap-1 text-gray-500 hover:text-blue-600 hover:border-blue-400"
                   onClick={() => fileInputRef.current?.click()} disabled={uploading}>
                   {uploading ? <><Loader2 className="w-4 h-4 animate-spin" /><span className="text-xs">Uploading…</span></> :
-                    <><Upload className="w-4 h-4" /><span className="text-xs">Select EmployeeMonitor.exe</span></>}
+                    <><Upload className="w-4 h-4" /><span className="text-xs">Select EmployeeMonitor.exe or .zip</span></>}
                 </Button>
               )}
             </div>
 
             {/* Step 2: EMWatchdog.exe */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Step 2 — EMWatchdog.exe (optional)</Label>
+              <Label className="text-sm font-medium">Step 2 — EMWatchdog.exe or .zip (optional)</Label>
               {uploadedWatchdog ? (
                 <div className="flex items-start gap-3 p-3 rounded-lg border border-green-200 bg-green-50">
                   <FileCheck className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
@@ -309,7 +318,7 @@ export default function AgentVersions() {
                   className="w-full h-14 border-dashed flex-col gap-1 text-gray-500 hover:text-blue-600 hover:border-blue-400"
                   onClick={() => watchdogInputRef.current?.click()} disabled={uploadingWatchdog}>
                   {uploadingWatchdog ? <><Loader2 className="w-4 h-4 animate-spin" /><span className="text-xs">Uploading…</span></> :
-                    <><Upload className="w-4 h-4" /><span className="text-xs">Select EMWatchdog.exe</span></>}
+                    <><Upload className="w-4 h-4" /><span className="text-xs">Select EMWatchdog.exe or .zip</span></>}
                 </Button>
               )}
             </div>

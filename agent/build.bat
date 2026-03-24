@@ -52,23 +52,10 @@ if %ERRORLEVEL% NEQ 0 (
 )
 echo.
 
-:: install.bat ko bhi dist folder mein copy karo
-echo Copying install.bat to dist\...
-copy /y install.bat dist\install.bat >nul
-echo.
-
 echo ============================================
 echo   Build Complete!
-echo   Files in dist\ folder:
+echo   Files located in dist\ folder:
 echo     - EmployeeMonitor.exe
 echo     - EMWatchdog.exe
-echo     - install.bat        <- employees ko yeh dena hai
 echo ============================================
-echo.
-echo Employee ko sirf yeh 3 files deni hain:
-echo   1. EmployeeMonitor.exe
-echo   2. EMWatchdog.exe
-echo   3. install.bat
-echo.
-echo install.bat double click kare -- UAC allow kare -- done!
 pause

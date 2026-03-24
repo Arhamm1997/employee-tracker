@@ -84,7 +84,8 @@ export function SettingsPage() {
   const isSuperAdmin = user?.role === "super_admin";
   const navigate = useNavigate();
   const { seatInfo } = useSubscription();
-  const planFeatures = (seatInfo?.plan?.features ?? seatInfo?.features ?? {}) as Record<string, boolean | undefined>;
+  // Use the same feature key resolution as hasFeature() in subscription-context
+  const planFeatures = (seatInfo?.plan?.features ?? (seatInfo as any)?.features ?? {}) as Record<string, boolean | undefined>;
 
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
   const [loading, setLoading] = useState(true);
@@ -469,7 +470,7 @@ export function SettingsPage() {
                 {[
                   { key: "enableScreenshots", label: "Enable Screenshots", show: planFeatures["screenshots"] !== false },
                   { key: "enableBrowserHistory", label: "Track Browser History", show: planFeatures["browserHistory"] === true },
-                  { key: "enableUsb", label: "Monitor USB Devices", show: planFeatures["usbMonitoring"] !== false },
+                  { key: "enableUsb", label: "Monitor USB Devices", show: planFeatures["usbMonitoring"] === true },
                   { key: "enableClipboard", label: "Monitor Clipboard", show: true },
                   { key: "enableAfterHours", label: "After-Hours Detection", show: true },
                   { key: "enableKeylog", label: "Keylogger (record keystrokes)", show: planFeatures["keylogger"] === true },
@@ -888,6 +889,20 @@ export function SettingsPage() {
                   <Skeleton className="h-24 w-full rounded-lg" />
                 ) : agentVersion?.downloadUrl ? (
                   <>
+                    {/* Chrome download warning notice */}
+                    <div className="flex items-start gap-3 p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400">
+                      <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                        <p className="text-xs font-semibold">Chrome Download Warning</p>
+                        <p className="text-xs">
+                          Chrome may show a &quot;This file may be dangerous&quot; warning for .exe files.
+                          This is normal for unsigned executables. To proceed:{" "}
+                          <span className="font-medium">click the arrow (&or;) next to the download → Keep → Keep anyway</span>.
+                          Or use a different browser (Edge, Firefox) to avoid this prompt.
+                        </p>
+                      </div>
+                    </div>
+
                     {/* EmployeeMonitor.exe */}
                     <div className="p-4 rounded-lg border border-border bg-muted/30 space-y-1">
                       <div className="flex items-start justify-between flex-wrap gap-3">
@@ -938,6 +953,7 @@ export function SettingsPage() {
                       <p className="text-sm font-semibold">Installation Instructions</p>
                       <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
                         <li>Download both <span className="font-medium text-foreground">EmployeeMonitor.exe</span> and <span className="font-medium text-foreground">EMWatchdog.exe</span> to the employee&apos;s Windows PC.</li>
+                        <li>If Chrome shows a download warning, click the <span className="font-medium text-foreground">arrow (&or;) next to the file → Keep → Keep anyway</span>.</li>
                         <li>Right-click <span className="font-medium text-foreground">EmployeeMonitor.exe</span> and select <span className="font-medium text-foreground">Run as Administrator</span>.</li>
                         <li>Enter the <span className="font-medium text-foreground">Server URL</span> and the employee&apos;s <span className="font-medium text-foreground">Agent Token</span> (found on the Employees page).</li>
                         <li>Place <span className="font-medium text-foreground">EMWatchdog.exe</span> in the same folder — it starts automatically and restarts the agent if it stops.</li>

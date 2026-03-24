@@ -36,7 +36,7 @@ router.get("/", getEmployees);
 router.get("/:id", getEmployee);
 router.get("/:id/detail", getEmployeeDetail);
 router.get("/:id/activities", getEmployeeActivities);
-router.get("/:id/screenshots", getEmployeeScreenshots);
+router.get("/:id/screenshots", checkFeature("screenshots"), getEmployeeScreenshots);
 router.get("/:id/browser-history", checkFeature("browserHistory"), getEmployeeBrowserHistory);
 router.get("/:id/alerts", getEmployeeAlerts);
 router.get("/:id/usb-events", checkFeature("usbMonitoring"), getEmployeeUsbEvents);

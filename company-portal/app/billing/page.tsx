@@ -39,16 +39,16 @@ export default function BillingPage() {
   }, [router]);
 
   async function handlePlanChange() {
-    if (!selectedPlanId) { setActionError("Plan select karein"); return; }
+    if (!selectedPlanId) { setActionError("Please select a plan"); return; }
     setActionLoading(true);
     setActionError("");
     try {
       if (modal === "upgrade") {
         await api.upgradeSubscription({ planId: selectedPlanId, billingCycle: cycle });
-        setActionSuccess("Plan upgrade ho gaya!");
+        setActionSuccess("Plan upgraded successfully!");
       } else {
         await api.downgradeSubscription({ planId: selectedPlanId, billingCycle: cycle });
-        setActionSuccess("Plan change ho gaya!");
+        setActionSuccess("Plan changed successfully!");
       }
       // Refresh usage
       const fresh = await api.getSubscriptionUsage();
@@ -81,7 +81,7 @@ export default function BillingPage() {
           <h1 className="text-2xl font-bold text-gray-900">Billing & Subscription</h1>
           <button onClick={() => router.push("/select-plan")}
             className="text-sm text-indigo-600 hover:underline font-medium">
-            New Plan Select Karein →
+            Select New Plan →
           </button>
         </div>
 
@@ -100,13 +100,13 @@ export default function BillingPage() {
             <div>
               <p className={`font-semibold text-sm ${usage!.usage.status === "EXPIRED" ? "text-red-700" : "text-yellow-800"}`}>
                 {usage!.usage.status === "EXPIRED"
-                  ? "Subscription expire ho gayi — Dashboard access band ho gaya"
-                  : `Subscription ${daysLeft} din mein expire hogi — Renew karein`}
+                  ? "Subscription has expired — Dashboard access has been suspended"
+                  : `Subscription expires in ${daysLeft} days — Please renew`}
               </p>
               {usage!.usage.status !== "EXPIRED" && (
                 <button onClick={() => router.push("/select-plan")}
                   className="text-xs text-yellow-700 underline mt-0.5">
-                  Abhi renew karein
+                  Renew now
                 </button>
               )}
             </div>
@@ -287,8 +287,8 @@ export default function BillingPage() {
             </h3>
             <p className="text-gray-500 text-sm mb-5">
               {modal === "upgrade"
-                ? "Zyada features ya seats wala plan select karein"
-                : "Chhota plan select karein (employees limit check hogi)"}
+                ? "Select a plan with more features or seats"
+                : "Select a smaller plan (employee limit will be verified)"}
             </p>
 
             {/* Billing cycle */}
@@ -351,7 +351,7 @@ export default function BillingPage() {
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
                 )}
-                {actionLoading ? "Processing..." : modal === "upgrade" ? "Upgrade Karein" : "Downgrade Karein"}
+                {actionLoading ? "Processing..." : modal === "upgrade" ? "Upgrade Plan" : "Downgrade Plan"}
               </button>
             </div>
           </div>

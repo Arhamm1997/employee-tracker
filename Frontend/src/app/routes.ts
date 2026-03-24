@@ -22,10 +22,11 @@ import { NotFoundPage } from "./pages/NotFoundPage";
 import { withFeatureGate } from "./components/layout/FeatureGate";
 
 // Feature-gated page wrappers (defined at module level for stable component refs)
-const ScreenshotsGated = withFeatureGate("screenshotsEnabled", ScreenshotsPage);
-const AlertsGated = withFeatureGate("alertsEnabled", AlertsPage);
-const ReportsGated = withFeatureGate("advancedReports", ReportsPage);
-const LiveScreenGated = withFeatureGate("livescreenEnabled", LiveScreenPage);
+// Keys must match what /api/subscription/info returns in plan.features
+const ScreenshotsGated = withFeatureGate("screenshots", ScreenshotsPage);
+const AlertsGated = withFeatureGate("alerts", AlertsPage);
+const ReportsGated = withFeatureGate("advanced_reports", ReportsPage);
+const LiveScreenGated = withFeatureGate("live_screen", LiveScreenPage);
 
 const PORTAL_URL = (import.meta as { env?: Record<string, string> }).env?.VITE_PORTAL_URL || "http://localhost:3001";
 
