@@ -98,12 +98,13 @@ router.post("/login", async (req: Request, res: Response) => {
       logger.error("Failed to send 2FA email:", err);
     });
 
+    const smtpConfigured = !!process.env.SMTP_USER;
     return res.json({
       success: true,
       data: {
         temp_token,
-        // Include code in dev so dashboard can auto-fill
-        ...(process.env.NODE_ENV !== "production" && { dev_code: code }),
+        // Include code in dev OR when SMTP is not configured (so admin can still log in)
+        ...((process.env.NODE_ENV !== "production" || !smtpConfigured) && { dev_code: code }),
       },
     });
   } catch (err) {

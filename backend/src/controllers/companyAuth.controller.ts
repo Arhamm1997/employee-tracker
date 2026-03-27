@@ -81,7 +81,10 @@ export async function register(
     const portalUrl = process.env.COMPANY_PORTAL_URL || "http://localhost:3001";
     const verificationUrl = `${portalUrl}/verify-email?token=${token}`;
 
-    await sendVerificationEmail(email, companyName, verificationUrl);
+    // Non-blocking — signup succeeds even if SMTP fails
+    sendVerificationEmail(email, companyName, verificationUrl).catch((err) => {
+      logger.warn("Verification email failed (SMTP not configured?):", err);
+    });
 
     // Notify master admin (non-blocking)
     const adminUrl = process.env.DASHBOARD_URL || "http://localhost:3000";
@@ -94,7 +97,12 @@ export async function register(
       .catch(() => {});
 
     logger.info(`Company registered: ${email}`);
-    res.status(201).json({ message: "Verification email sent" });
+    const smtpConfigured = !!process.env.SMTP_USER;
+    res.status(201).json({
+      message: "Verification email sent",
+      // Return verification URL when SMTP not configured so admin can manually verify
+      ...(!smtpConfigured && { verificationUrl }),
+    });
   } catch (err) {
     next(err);
   }
@@ -203,10 +211,17 @@ export async function resendVerification(
     });
 
     const portalUrl = process.env.COMPANY_PORTAL_URL || "http://localhost:3001";
-    await sendVerificationEmail(email, company.name, `${portalUrl}/verify-email?token=${token}`);
+    const verifyUrl = `${portalUrl}/verify-email?token=${token}`;
+    sendVerificationEmail(email, company.name, verifyUrl).catch((err) => {
+      logger.warn("Resend verification email failed:", err);
+    });
 
     logger.info(`Verification resent to: ${email}`);
-    res.json({ message: "Verification email sent" });
+    const smtpConfigured = !!process.env.SMTP_USER;
+    res.json({
+      message: "Verification email sent",
+      ...(!smtpConfigured && { verificationUrl: verifyUrl }),
+    });
   } catch (err) {
     next(err);
   }
