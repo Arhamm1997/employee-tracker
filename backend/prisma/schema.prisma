@@ -31,6 +31,7 @@ model Company {
   emailVerificationTokens EmailVerificationToken[]
   passwordResetTokens     PasswordResetToken[]
   upgradeRequests         PlanUpgradeRequest[]
+  supportTickets          SupportTicket[]
 }
 
 // ─── MULTI-TENANCY: Plan ──────────────────────────────────────────────────────
@@ -544,6 +545,41 @@ model AuditLog {
   @@index([company_id])
   @@index([action])
   @@index([created_at])
+}
+
+// ─── Support Tickets ─────────────────────────────────────────────────────────
+
+model SupportTicket {
+  id          String   @id @default(cuid())
+  companyId   String
+  subject     String
+  description String
+  priority    String   @default("medium") // low | medium | high | critical
+  status      String   @default("open")   // open | in_progress | resolved | closed
+  assignedTo  String?                      // Admin id
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company  Company       @relation(fields: [companyId], references: [id])
+  replies  TicketReply[]
+
+  @@index([companyId])
+  @@index([status])
+  @@index([priority])
+}
+
+model TicketReply {
+  id         String   @id @default(cuid())
+  ticketId   String
+  adminId    String?   // set if reply from admin
+  companyId  String?   // set if reply from company
+  message    String
+  isInternal Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
 }
 
 // ─── Plan Upgrade Requests ────────────────────────────────────────────────────

@@ -17,7 +17,7 @@ import { Label } from '../components/ui/label';
 import { Checkbox } from '../components/ui/checkbox';
 import { TableSkeleton } from '../components/LoadingSkeleton';
 import { EmptyState } from '../components/EmptyState';
-import { Ticket as TicketIcon, Eye } from 'lucide-react';
+import { Ticket as TicketIcon, Eye, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 
 const replySchema = z.object({
@@ -105,6 +105,19 @@ export default function Tickets() {
   } = useForm<ReplyFormData>({
     resolver: zodResolver(replySchema),
     defaultValues: { isInternal: false },
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: async ({ ticketId, status }: { ticketId: string; status: string }) => {
+      const response = await api.patch(`/admin/tickets/${ticketId}/status`, { status });
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Status updated');
+      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['ticket', viewingTicket?.id] });
+    },
+    onError: () => toast.error('Failed to update status'),
   });
 
   const handleReply = (data: ReplyFormData) => {
@@ -281,10 +294,27 @@ export default function Tickets() {
                   <p className="font-medium">{ticketDetail.companyName}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Status</p>
-                  <Badge className={`${getStatusColor(ticketDetail.status)} text-white`}>
-                    {ticketDetail.status.replace('_', ' ')}
-                  </Badge>
+                  <p className="text-sm text-gray-600 mb-1">Status</p>
+                  <div className="flex items-center gap-2">
+                    <Badge className={`${getStatusColor(ticketDetail.status)} text-white`}>
+                      {ticketDetail.status.replace('_', ' ')}
+                    </Badge>
+                    <Select
+                      value={ticketDetail.status}
+                      onValueChange={(s) => statusMutation.mutate({ ticketId: ticketDetail.id, status: s })}
+                    >
+                      <SelectTrigger className="h-7 w-32 text-xs">
+                        <RefreshCw className="w-3 h-3 mr-1" />
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="open">Open</SelectItem>
+                        <SelectItem value="in_progress">In Progress</SelectItem>
+                        <SelectItem value="resolved">Resolved</SelectItem>
+                        <SelectItem value="closed">Closed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Priority</p>

@@ -25,6 +25,7 @@ import {
   X,
   CheckCheck,
   TrendingUp,
+  LifeBuoy,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import {
@@ -43,7 +44,7 @@ interface AdminLayoutProps {
 
 interface Notification {
   id: string;
-  type: 'invoice' | 'signup' | 'upgrade_request';
+  type: 'invoice' | 'signup' | 'upgrade_request' | 'ticket';
   title: string;
   body: string;
   time: string;
@@ -319,12 +320,15 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                             <div className={`mt-0.5 w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
                               n.type === 'invoice' ? 'bg-amber-100' :
                               n.type === 'upgrade_request' ? 'bg-purple-100' :
+                              n.type === 'ticket' ? 'bg-blue-100' :
                               'bg-green-100'
                             }`}>
                               {n.type === 'invoice'
                                 ? <Receipt className="w-4 h-4 text-amber-600" />
                                 : n.type === 'upgrade_request'
                                 ? <TrendingUp className="w-4 h-4 text-purple-600" />
+                                : n.type === 'ticket'
+                                ? <LifeBuoy className="w-4 h-4 text-blue-600" />
                                 : <UserPlus className="w-4 h-4 text-green-600" />
                               }
                             </div>

@@ -45,7 +45,7 @@ router.get("/notifications", requireAdmin, async (_req: AdminRequest, res: Respo
   try {
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-    const [pendingInvoices, newCustomers, newInvoicesToday, upgradeRequests] = await Promise.all([
+    const [pendingInvoices, newCustomers, newInvoicesToday, upgradeRequests, newTickets] = await Promise.all([
       prisma.invoice.findMany({
         where: { status: "PENDING" },
         orderBy: { createdAt: "desc" },
@@ -68,9 +68,24 @@ router.get("/notifications", requireAdmin, async (_req: AdminRequest, res: Respo
           requestedPlan: { select: { name: true } },
         },
       }),
+      prisma.supportTicket.findMany({
+        where: { status: "open", createdAt: { gte: oneDayAgo } },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        include: { company: { select: { id: true, name: true } } },
+      }),
     ]);
 
     const notifications = [
+      ...newTickets.map((t) => ({
+        id: `ticket-${t.id}`,
+        type: "ticket" as const,
+        title: `New Support Ticket: ${t.company.name}`,
+        body: t.subject,
+        time: t.createdAt.toISOString(),
+        link: `/admin/tickets`,
+        isNew: true,
+      })),
       ...upgradeRequests.map((r) => ({
         id: `upgrade-${r.id}`,
         type: "upgrade_request" as const,
@@ -106,6 +121,7 @@ router.get("/notifications", requireAdmin, async (_req: AdminRequest, res: Respo
       newSignupsToday: newCustomers.length,
       newInvoicesToday,
       pendingUpgradeRequests: upgradeRequests.length,
+      newTicketsToday: newTickets.length,
       notifications,
     });
   } catch {

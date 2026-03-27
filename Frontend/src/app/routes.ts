@@ -15,6 +15,7 @@ import { SettingsPage } from "./pages/SettingsPage";
 import { AdminsPage } from "./pages/AdminsPage";
 import { LiveScreenPage } from "./pages/LiveScreenPage";
 import { BillingPage } from "./pages/BillingPage";
+import { SupportPage } from "./pages/SupportPage";
 import { SignupPage } from "./pages/SignupPage";
 import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 import { PaymentPage } from "./pages/PaymentPage";
@@ -65,6 +66,7 @@ export const router = createBrowserRouter([
           { path: "dashboard/settings", Component: SettingsPage },
           { path: "dashboard/admins", Component: AdminsPage },
           { path: "dashboard/billing", Component: BillingPage },
+          { path: "dashboard/support", Component: SupportPage },
         ],
       },
       // 2FA setup is inside ProtectedRoute (requires auth) but outside DashboardLayout

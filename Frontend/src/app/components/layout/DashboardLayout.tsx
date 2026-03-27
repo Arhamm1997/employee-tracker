@@ -5,7 +5,7 @@ import { usePlanUpgradeConfetti } from "../../hooks/usePlanUpgradeConfetti";
 import {
   LayoutDashboard, Users, Camera, AlertTriangle, FileText,
   Settings, Shield, Bell, Moon, Sun, LogOut, Menu, ChevronLeft,
-  User as UserIcon, ChevronDown
+  User as UserIcon, ChevronDown, LifeBuoy
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
@@ -29,6 +29,7 @@ const ALL_NAV_ITEMS = [
   { path: "/dashboard/alerts", label: "Alerts", icon: AlertTriangle, hasBadge: true, feature: "alerts" },
   { path: "/dashboard/reports", label: "Reports", icon: FileText, feature: "advanced_reports" },
   { path: "/dashboard/settings", label: "Settings", icon: Settings, feature: null },
+  { path: "/dashboard/support", label: "Support", icon: LifeBuoy, feature: null },
 ];
 
 const adminItem = { path: "/dashboard/admins", label: "Admin", icon: Shield, feature: null };
@@ -42,6 +43,7 @@ function getPageTitle(pathname: string): string {
   if (pathname === "/dashboard/reports") return "Reports";
   if (pathname === "/dashboard/settings") return "Settings";
   if (pathname === "/dashboard/admins") return "Admin Panel";
+  if (pathname === "/dashboard/support") return "Support";
   return "Dashboard";
 }
 
