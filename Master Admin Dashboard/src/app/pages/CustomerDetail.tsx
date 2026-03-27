@@ -187,6 +187,7 @@ export default function CustomerDetail() {
   const {
     register: registerChangePlan,
     handleSubmit: handleSubmitChangePlan,
+    setValue: setChangePlanValue,
     formState: { errors: changePlanErrors },
   } = useForm<ChangePlanFormData>({
     resolver: zodResolver(changePlanSchema),
@@ -394,9 +395,7 @@ export default function CustomerDetail() {
                         <div>
                           <Label>New Plan</Label>
                           <Select
-                            onValueChange={(value) =>
-                              registerChangePlan('planId').onChange({ target: { value } })
-                            }
+                            onValueChange={(value) => setChangePlanValue('planId', value)}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Select plan" />
