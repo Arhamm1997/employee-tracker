@@ -30,6 +30,7 @@ model Company {
   invoices                Invoice[]
   emailVerificationTokens EmailVerificationToken[]
   passwordResetTokens     PasswordResetToken[]
+  upgradeRequests         PlanUpgradeRequest[]
 }
 
 // ─── MULTI-TENANCY: Plan ──────────────────────────────────────────────────────
@@ -56,8 +57,9 @@ model Plan {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
-  subscriptions Subscription[]
-  invoices      Invoice[]
+  subscriptions   Subscription[]
+  invoices        Invoice[]
+  upgradeRequests PlanUpgradeRequest[]
 }
 
 // ─── MULTI-TENANCY: Subscription ─────────────────────────────────────────────
@@ -542,4 +544,23 @@ model AuditLog {
   @@index([company_id])
   @@index([action])
   @@index([created_at])
+}
+
+// ─── Plan Upgrade Requests ────────────────────────────────────────────────────
+
+model PlanUpgradeRequest {
+  id              String   @id @default(cuid())
+  companyId       String
+  requestedPlanId String
+  note            String?
+  status          String   @default("pending") // pending | approved | rejected
+  adminNote       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  company       Company @relation(fields: [companyId], references: [id])
+  requestedPlan Plan    @relation(fields: [requestedPlanId], references: [id])
+
+  @@index([companyId])
+  @@index([status])
 }

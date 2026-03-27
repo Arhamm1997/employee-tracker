@@ -57,6 +57,13 @@ export function SubscriptionProvider({
     }
   }, [isAuthenticated, authLoading]);
 
+  // Poll every 30s to detect plan changes in real-time
+  useEffect(() => {
+    if (!isAuthenticated || authLoading) return;
+    const interval = setInterval(() => { void refreshSeatInfo(); }, 30000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated, authLoading]);
+
   return (
     <SubscriptionContext.Provider
       value={{ seatInfo, loading, error, refreshSeatInfo }}

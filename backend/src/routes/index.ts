@@ -16,6 +16,7 @@ import companySubscriptionRoutes from "./company-subscription.routes";
 import subscriptionRoutes from "./subscription.routes";
 import paymentRoutes from "./payment.routes";
 import cronRoutes from "./cron.routes";
+import upgradeRequestRoutes from "./upgrade-request.routes";
 import { authenticate } from "../middleware/auth.middleware";
 import prisma from "../lib/prisma";
 
@@ -181,5 +182,6 @@ router.use("/payment", paymentRoutes);
 
 // ── Cron Jobs ─────────────────────────────────────────────────────────────────
 router.use("/cron", cronRoutes);
+router.use("/upgrade-request", upgradeRequestRoutes);
 
 export default router;

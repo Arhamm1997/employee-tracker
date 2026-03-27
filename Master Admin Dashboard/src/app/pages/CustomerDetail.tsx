@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { CardSkeleton, TableSkeleton } from '../components/LoadingSkeleton';
-import { ArrowLeft, Users, CreditCard, Monitor, FileText, AlertCircle, BanIcon, CheckCircle, Trash2 } from 'lucide-react';
+import { ArrowLeft, Users, CreditCard, Monitor, FileText, AlertCircle, BanIcon, CheckCircle, Trash2, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { format } from 'date-fns';
 
@@ -94,6 +94,20 @@ export default function CustomerDetail() {
     },
   });
 
+  // Fetch pending upgrade request for this customer
+  const { data: upgradeRequestData, refetch: refetchUpgradeRequest } = useQuery<{
+    requests: Array<{ id: string; requestedPlan: { name: string; priceMonthly: number }; note: string | null; createdAt: string }>
+  }>({
+    queryKey: ['upgrade-requests', id],
+    queryFn: async () => {
+      const response = await api.get(`/admin/upgrade-requests`);
+      const all = response.data.requests ?? [];
+      // Filter for this customer (backend returns all, we filter client-side)
+      return { requests: all.filter((r: { companyId?: string }) => r.companyId === id) };
+    },
+    refetchInterval: 30000,
+  });
+
   // Change plan mutation
   const changePlanMutation = useMutation({
     mutationFn: async (data: ChangePlanFormData) => {
@@ -169,6 +183,34 @@ export default function CustomerDetail() {
       queryClient.invalidateQueries({ queryKey: ['customer', id] });
     },
     onError: () => toast.error('Failed to activate company'),
+  });
+
+  // Approve upgrade request mutation
+  const approveUpgradeMutation = useMutation({
+    mutationFn: async (requestId: string) => {
+      const response = await api.post(`/admin/upgrade-requests/${requestId}/approve`);
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Upgrade request approved! Plan changed.');
+      queryClient.invalidateQueries({ queryKey: ['customer', id] });
+      queryClient.invalidateQueries({ queryKey: ['customer-subscription', id] });
+      void refetchUpgradeRequest();
+    },
+    onError: () => toast.error('Failed to approve upgrade request'),
+  });
+
+  // Reject upgrade request mutation
+  const rejectUpgradeMutation = useMutation({
+    mutationFn: async (requestId: string) => {
+      const response = await api.post(`/admin/upgrade-requests/${requestId}/reject`);
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Upgrade request rejected.');
+      void refetchUpgradeRequest();
+    },
+    onError: () => toast.error('Failed to reject upgrade request'),
   });
 
   // Delete mutation
@@ -378,6 +420,44 @@ export default function CustomerDetail() {
                     <p className="font-medium mt-1">PKR {subscription.mrr.toLocaleString()}</p>
                   </div>
                 </div>
+
+                {/* Pending Upgrade Requests */}
+                {(upgradeRequestData?.requests ?? []).length > 0 && (
+                  <div className="mt-4 p-4 rounded-xl bg-purple-50 border border-purple-200 space-y-3">
+                    <div className="flex items-center gap-2 text-purple-700 font-semibold text-sm">
+                      <TrendingUp className="w-4 h-4" />
+                      Pending Upgrade Request
+                    </div>
+                    {upgradeRequestData!.requests.map((req) => (
+                      <div key={req.id} className="bg-white rounded-lg p-3 border border-purple-100 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-sm">→ {req.requestedPlan.name} (PKR {req.requestedPlan.priceMonthly.toLocaleString()}/mo)</span>
+                          <span className="text-xs text-gray-400">{new Date(req.createdAt).toLocaleDateString()}</span>
+                        </div>
+                        {req.note && <p className="text-xs text-gray-500 italic">"{req.note}"</p>}
+                        <div className="flex gap-2 pt-1">
+                          <Button
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700 text-white text-xs h-7"
+                            disabled={approveUpgradeMutation.isPending}
+                            onClick={() => approveUpgradeMutation.mutate(req.id)}
+                          >
+                            ✓ Approve & Change Plan
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-red-600 border-red-200 hover:bg-red-50 text-xs h-7"
+                            disabled={rejectUpgradeMutation.isPending}
+                            onClick={() => rejectUpgradeMutation.mutate(req.id)}
+                          >
+                            ✕ Reject
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 <div className="flex gap-3 pt-4 border-t">
                   <Dialog open={isChangePlanOpen} onOpenChange={setIsChangePlanOpen}>

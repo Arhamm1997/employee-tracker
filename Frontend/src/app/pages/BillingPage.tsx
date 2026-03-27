@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { SeatLimitCard } from "../components/SeatLimit";
 import { useSubscription } from "../lib/subscription-context";
 
@@ -6,9 +6,65 @@ const PORTAL_URL =
   (import.meta as { env?: Record<string, string> }).env?.VITE_PORTAL_URL ||
   "http://localhost:3001";
 
+const BASE_URL = (import.meta as { env?: Record<string, string> }).env?.VITE_API_URL || "/api";
+
+function getToken() {
+  return localStorage.getItem("monitor_token") || "";
+}
+
+interface PlanOption { id: string; name: string; priceMonthly: number; }
+interface PendingRequest { id: string; requestedPlan: { name: string }; createdAt: string; status: string; }
+
 export function BillingPage() {
   const { seatInfo, loading, error } = useSubscription();
   const [_portalOpened, setPortalOpened] = useState(false);
+
+  // Upgrade request state
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [plans, setPlans] = useState<PlanOption[]>([]);
+  const [selectedPlanId, setSelectedPlanId] = useState("");
+  const [note, setNote] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [pendingRequest, setPendingRequest] = useState<PendingRequest | null>(null);
+  const [requestSuccess, setRequestSuccess] = useState(false);
+
+  useEffect(() => {
+    // Fetch available plans
+    fetch(`${BASE_URL}/plans`, { headers: { Authorization: `Bearer ${getToken()}` } })
+      .then(r => r.json())
+      .then((data: { plans?: PlanOption[] } | PlanOption[]) => {
+        const arr = Array.isArray(data) ? data : (data.plans ?? []);
+        setPlans(arr);
+      })
+      .catch(() => {});
+
+    // Fetch pending upgrade request
+    fetch(`${BASE_URL}/upgrade-request/status`, { headers: { Authorization: `Bearer ${getToken()}` } })
+      .then(r => r.json())
+      .then((data: { pending?: PendingRequest | null }) => setPendingRequest(data.pending ?? null))
+      .catch(() => {});
+  }, [requestSuccess]);
+
+  const submitUpgradeRequest = async () => {
+    if (!selectedPlanId) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${BASE_URL}/upgrade-request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({ planId: selectedPlanId, note }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setShowUpgradeModal(false);
+      setRequestSuccess(s => !s);
+      setNote("");
+      setSelectedPlanId("");
+    } catch {
+      alert("Request submit karne mein masla aaya. Dobara koshish karein.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const sub = seatInfo as {
     plan?: { name?: string; price_pkr?: number };
@@ -171,16 +227,86 @@ export function BillingPage() {
               </div>
             )}
 
+            {/* Pending upgrade request banner */}
+            {pendingRequest && (
+              <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 p-3 flex items-center gap-2 text-amber-800 text-sm dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-200">
+                <span className="text-lg">⏳</span>
+                <div>
+                  <p className="font-semibold">Upgrade Request Pending</p>
+                  <p className="text-xs opacity-80">
+                    {pendingRequest.requestedPlan.name} plan ke liye request submit ho gayi — Admin review kar raha hai.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-3">
-              <a href={`${PORTAL_URL}/billing`} target="_blank" rel="noopener noreferrer"
-                className="flex-1 bg-primary text-primary-foreground text-center py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors">
-                Upgrade Plan
-              </a>
+              <button
+                onClick={() => setShowUpgradeModal(true)}
+                className="flex-1 bg-primary text-primary-foreground text-center py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors"
+              >
+                🚀 Upgrade Plan Request
+              </button>
               <a href={`${PORTAL_URL}/billing`} target="_blank" rel="noopener noreferrer"
                 className="flex-1 bg-muted text-foreground text-center py-2.5 rounded-lg text-sm font-semibold hover:bg-muted/80 transition-colors">
-                Downgrade Plan
+                Manage Billing
               </a>
             </div>
+
+            {/* Upgrade Request Modal */}
+            {showUpgradeModal && (
+              <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-bold">🚀 Plan Upgrade Request</h3>
+                    <button onClick={() => setShowUpgradeModal(false)} className="text-muted-foreground hover:text-foreground text-xl leading-none">✕</button>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Apna desired plan select karein. Admin review karke approve karega.
+                  </p>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Desired Plan</label>
+                    <select
+                      value={selectedPlanId}
+                      onChange={e => setSelectedPlanId(e.target.value)}
+                      className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <option value="">-- Plan select karein --</option>
+                      {plans.map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} — PKR {p.priceMonthly.toLocaleString()}/month
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Note (optional)</label>
+                    <textarea
+                      value={note}
+                      onChange={e => setNote(e.target.value)}
+                      placeholder="Admin ko koi message likhein..."
+                      rows={3}
+                      className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                    />
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      onClick={() => setShowUpgradeModal(false)}
+                      className="flex-1 py-2.5 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={submitUpgradeRequest}
+                      disabled={!selectedPlanId || submitting}
+                      className="flex-1 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+                    >
+                      {submitting ? "Submitting..." : "Request Bhejein 🚀"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* ── Payment history ──────────────────────────────────────────── */}
