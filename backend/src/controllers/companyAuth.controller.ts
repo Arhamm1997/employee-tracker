@@ -8,6 +8,7 @@ import logger from "../lib/logger";
 import {
   sendVerificationEmail,
   sendWelcomeEmail,
+  sendAdminNewSignupNotification,
 } from "../services/email.service";
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
@@ -81,6 +82,16 @@ export async function register(
     const verificationUrl = `${portalUrl}/verify-email?token=${token}`;
 
     await sendVerificationEmail(email, companyName, verificationUrl);
+
+    // Notify master admin (non-blocking)
+    const adminUrl = process.env.DASHBOARD_URL || "http://localhost:3000";
+    prisma.admin.findFirst({ where: { companyId: null, role: "super_admin" } })
+      .then((masterAdmin) => {
+        if (masterAdmin?.email) {
+          sendAdminNewSignupNotification(masterAdmin.email, companyName, email, adminUrl).catch(() => {});
+        }
+      })
+      .catch(() => {});
 
     logger.info(`Company registered: ${email}`);
     res.status(201).json({ message: "Verification email sent" });

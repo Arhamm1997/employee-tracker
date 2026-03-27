@@ -731,6 +731,112 @@ export async function sendPaymentRejectedEmail(
   }
 }
 
+// ─── Master Admin Notification Emails ────────────────────────────────────────
+
+export async function sendAdminNewSignupNotification(
+  to: string,
+  companyName: string,
+  companyEmail: string,
+  adminUrl: string
+): Promise<void> {
+  if (!process.env.SMTP_USER) return;
+
+  const body = `
+    <p style="color:#6b7280;margin-bottom:24px;">
+      A new company has just signed up on <strong>${COMPANY}</strong>.
+    </p>
+    <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+      <tr style="background:#f9fafb;">
+        <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;color:#374151;">Company</td>
+        <td style="padding:12px 16px;border:1px solid #e5e7eb;color:#6b7280;">${companyName}</td>
+      </tr>
+      <tr>
+        <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;color:#374151;">Email</td>
+        <td style="padding:12px 16px;border:1px solid #e5e7eb;color:#6b7280;">${companyEmail}</td>
+      </tr>
+      <tr style="background:#f9fafb;">
+        <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;color:#374151;">Time</td>
+        <td style="padding:12px 16px;border:1px solid #e5e7eb;color:#6b7280;">${new Date().toLocaleString()}</td>
+      </tr>
+    </table>
+    <div style="text-align:center;margin:32px 0;">
+      <a href="${adminUrl}/admin/customers" style="display:inline-block;background:#6366f1;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;">
+        View in Admin Panel →
+      </a>
+    </div>
+  `;
+
+  try {
+    await transporter.sendMail({
+      from: FROM,
+      to,
+      subject: `🆕 New Signup: ${companyName} — ${COMPANY}`,
+      html: baseTemplate("New Company Signup", body),
+    });
+    logger.info(`Admin new signup notification sent for ${companyName}`);
+  } catch (err) {
+    logger.error("Failed to send admin new signup notification:", err);
+  }
+}
+
+export async function sendAdminNewInvoiceNotification(
+  to: string,
+  invoiceNumber: string,
+  companyName: string,
+  companyEmail: string,
+  planName: string,
+  amount: number,
+  adminUrl: string
+): Promise<void> {
+  if (!process.env.SMTP_USER) return;
+
+  const amountStr = amount.toLocaleString("en-PK");
+
+  const body = `
+    <p style="color:#6b7280;margin-bottom:24px;">
+      A new payment invoice has been created and is awaiting your approval.
+    </p>
+    <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+      <tr style="background:#fef3c7;">
+        <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;color:#374151;">Invoice #</td>
+        <td style="padding:12px 16px;border:1px solid #e5e7eb;color:#d97706;font-weight:700;">${invoiceNumber}</td>
+      </tr>
+      <tr>
+        <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;color:#374151;">Company</td>
+        <td style="padding:12px 16px;border:1px solid #e5e7eb;color:#6b7280;">${companyName} (${companyEmail})</td>
+      </tr>
+      <tr style="background:#f9fafb;">
+        <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;color:#374151;">Plan</td>
+        <td style="padding:12px 16px;border:1px solid #e5e7eb;color:#6b7280;">${planName}</td>
+      </tr>
+      <tr>
+        <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;color:#374151;">Amount</td>
+        <td style="padding:12px 16px;border:1px solid #e5e7eb;color:#374151;font-size:18px;font-weight:700;">PKR ${amountStr}</td>
+      </tr>
+    </table>
+    <div class="alert-box medium">
+      ⏳ This invoice is pending approval. Please review and approve or reject it.
+    </div>
+    <div style="text-align:center;margin:32px 0;">
+      <a href="${adminUrl}/admin/invoices" style="display:inline-block;background:#f59e0b;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;">
+        Review Invoice →
+      </a>
+    </div>
+  `;
+
+  try {
+    await transporter.sendMail({
+      from: FROM,
+      to,
+      subject: `💰 New Invoice ${invoiceNumber} — PKR ${amountStr} | ${COMPANY}`,
+      html: baseTemplate(`New Invoice: ${invoiceNumber}`, body),
+    });
+    logger.info(`Admin new invoice notification sent for ${invoiceNumber}`);
+  } catch (err) {
+    logger.error("Failed to send admin new invoice notification:", err);
+  }
+}
+
 export async function verifyEmailConfig(): Promise<boolean> {
   try {
     await transporter.verify();

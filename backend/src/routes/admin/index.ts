@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, Response } from "express";
 import authRoutes from "./auth.routes";
 import analyticsRoutes from "./analytics.routes";
 import customersRoutes from "./customers.routes";
@@ -14,6 +14,8 @@ import ticketsRoutes from "./tickets.routes";
 import agentVersionsRoutes from "./agent-versions.routes";
 import invoicesRoutes from "./invoices.routes";
 import paymentSettingsRoutes from "./payment-settings.routes";
+import { requireAdmin, AdminRequest } from "../../middleware/adminAuth";
+import prisma from "../../lib/prisma";
 
 const router = Router();
 
@@ -37,5 +39,59 @@ router.use("/agent-versions", agentVersionsRoutes);
 // Phase 7 & 8: Billing / Offline Payment
 router.use("/invoices", invoicesRoutes);
 router.use("/payment-settings", paymentSettingsRoutes);
+
+// ── GET /admin/notifications ──────────────────────────────────────────────────
+router.get("/notifications", requireAdmin, async (_req: AdminRequest, res: Response) => {
+  try {
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const [pendingInvoices, newCustomers, newInvoicesToday] = await Promise.all([
+      prisma.invoice.findMany({
+        where: { status: "PENDING" },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        include: { company: { select: { name: true } }, plan: { select: { name: true } } },
+      }),
+      prisma.company.findMany({
+        where: { createdAt: { gte: oneDayAgo } },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        select: { name: true, email: true, createdAt: true },
+      }),
+      prisma.invoice.count({ where: { createdAt: { gte: oneDayAgo } } }),
+    ]);
+
+    const notifications = [
+      ...pendingInvoices.map((inv) => ({
+        id: `inv-${inv.id}`,
+        type: "invoice" as const,
+        title: `New Invoice: ${inv.invoiceNumber}`,
+        body: `${inv.company.name} — PKR ${inv.amount.toLocaleString("en-PK")} (${inv.plan.name})`,
+        time: inv.createdAt.toISOString(),
+        link: "/admin/invoices",
+        isNew: inv.createdAt >= oneDayAgo,
+      })),
+      ...newCustomers.map((c) => ({
+        id: `signup-${c.email}`,
+        type: "signup" as const,
+        title: `New Signup: ${c.name}`,
+        body: c.email,
+        time: c.createdAt.toISOString(),
+        link: "/admin/customers",
+        isNew: true,
+      })),
+    ].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+
+    res.json({
+      total: notifications.length,
+      pendingInvoicesCount: pendingInvoices.length,
+      newSignupsToday: newCustomers.length,
+      newInvoicesToday,
+      notifications,
+    });
+  } catch {
+    res.status(500).json({ message: "Failed to fetch notifications" });
+  }
+});
 
 export default router;

@@ -1,3 +1,4 @@
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router';
 import { useAuthStore } from '../../store/authStore';
 import { Badge } from './ui/badge';
@@ -19,6 +20,9 @@ import {
   LogOut,
   Bot,
   Settings,
+  UserPlus,
+  Receipt,
+  X,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import {
@@ -29,9 +33,27 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from './ui/breadcrumb';
+import api from '../../lib/api';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
+}
+
+interface Notification {
+  id: string;
+  type: 'invoice' | 'signup';
+  title: string;
+  body: string;
+  time: string;
+  link: string;
+  isNew: boolean;
+}
+
+interface NotificationsResponse {
+  total: number;
+  pendingInvoicesCount: number;
+  newSignupsToday: number;
+  notifications: Notification[];
 }
 
 const navigation = [
@@ -59,10 +81,57 @@ const roleColors = {
   analyst: 'bg-purple-500',
 };
 
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
 export function AdminLayout({ children }: AdminLayoutProps) {
   const location = useLocation();
   const admin = useAuthStore((state) => state.admin);
   const logout = useAuthStore((state) => state.logout);
+
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifData, setNotifData] = useState<NotificationsResponse | null>(null);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const fetchNotifications = async () => {
+    try {
+      setNotifLoading(true);
+      const res = await api.get<NotificationsResponse>('/admin/notifications');
+      setNotifData(res.data);
+    } catch {
+      // silent fail
+    } finally {
+      setNotifLoading(false);
+    }
+  };
+
+  // Poll every 60s and fetch on open
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setNotifOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const unreadCount = notifData?.total ?? 0;
 
   const getBreadcrumbs = () => {
     const paths = location.pathname.split('/').filter(Boolean);
@@ -87,7 +156,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
         <nav className="flex-1 overflow-y-auto px-3">
           {navigation.map((item) => {
-            const isActive = location.pathname === item.href || 
+            const isActive = location.pathname === item.href ||
                            (item.href !== '/admin' && location.pathname.startsWith(item.href));
             return (
               <Link
@@ -101,6 +170,18 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               >
                 <item.icon className="w-5 h-5" />
                 <span className="text-sm font-medium">{item.name}</span>
+                {/* Badge for Invoices with pending count */}
+                {item.name === 'Invoices' && (notifData?.pendingInvoicesCount ?? 0) > 0 && (
+                  <span className="ml-auto bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                    {notifData!.pendingInvoicesCount}
+                  </span>
+                )}
+                {/* Badge for Customers with new signups today */}
+                {item.name === 'Customers' && (notifData?.newSignupsToday ?? 0) > 0 && (
+                  <span className="ml-auto bg-green-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                    NEW
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -143,17 +224,96 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             </Breadcrumb>
 
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-              </Button>
-              
+              {/* Notification Bell */}
+              <div className="relative" ref={dropdownRef}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative"
+                  onClick={() => setNotifOpen((o) => !o)}
+                >
+                  <Bell className="w-5 h-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </Button>
+
+                {notifOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-96 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
+                      <div>
+                        <p className="font-semibold text-gray-900 text-sm">Notifications</p>
+                        {notifData && (
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {notifData.pendingInvoicesCount} pending invoice{notifData.pendingInvoicesCount !== 1 ? 's' : ''} · {notifData.newSignupsToday} new signup{notifData.newSignupsToday !== 1 ? 's' : ''} today
+                          </p>
+                        )}
+                      </div>
+                      <button onClick={() => setNotifOpen(false)} className="text-gray-400 hover:text-gray-600">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Notification list */}
+                    <div className="max-h-80 overflow-y-auto divide-y divide-gray-50">
+                      {notifLoading && !notifData && (
+                        <div className="px-4 py-6 text-center text-sm text-gray-400">Loading...</div>
+                      )}
+                      {!notifLoading && notifData?.notifications.length === 0 && (
+                        <div className="px-4 py-6 text-center text-sm text-gray-400">No new notifications</div>
+                      )}
+                      {notifData?.notifications.map((n) => (
+                        <Link
+                          key={n.id}
+                          to={n.link}
+                          onClick={() => setNotifOpen(false)}
+                          className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
+                        >
+                          <div className={`mt-0.5 w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                            n.type === 'invoice' ? 'bg-amber-100' : 'bg-green-100'
+                          }`}>
+                            {n.type === 'invoice'
+                              ? <Receipt className="w-4 h-4 text-amber-600" />
+                              : <UserPlus className="w-4 h-4 text-green-600" />
+                            }
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium text-gray-900 truncate">{n.title}</p>
+                              {n.isNew && (
+                                <span className="flex-shrink-0 text-[10px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">NEW</span>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-500 truncate">{n.body}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">{timeAgo(n.time)}</p>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="border-t border-gray-100 px-4 py-2 bg-gray-50">
+                      <Link
+                        to="/admin/invoices"
+                        onClick={() => setNotifOpen(false)}
+                        className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                      >
+                        View all invoices →
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="flex items-center gap-3">
                 <div className="text-right">
                   <p className="text-sm font-medium text-gray-900">{admin?.name}</p>
                   <p className="text-xs text-gray-500">{admin?.email}</p>
                 </div>
-                <Badge className={`${roleColors[admin?.role || 'admin']} text-white`}>
+                <Badge className={`${roleColors[admin?.role as keyof typeof roleColors] || 'bg-blue-500'} text-white`}>
                   {admin?.role}
                 </Badge>
               </div>

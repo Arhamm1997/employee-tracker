@@ -12,6 +12,7 @@ import {
 import {
   sendInvoiceCreatedEmail,
   sendScreenshotUploadConfirmationEmail,
+  sendAdminNewInvoiceNotification,
 } from "../services/email.service";
 import logger from "../lib/logger";
 
@@ -150,6 +151,24 @@ router.post("/create-invoice", async (req: CompanyRequest, res: Response) => {
         invoiceUrl
       ).catch(() => {});
     }
+
+    // Notify master admin about new invoice (non-blocking)
+    const ADMIN_URL = process.env.DASHBOARD_URL || "http://localhost:3000";
+    prisma.admin.findFirst({ where: { companyId: null, role: "super_admin" } })
+      .then((masterAdmin) => {
+        if (masterAdmin?.email) {
+          sendAdminNewInvoiceNotification(
+            masterAdmin.email,
+            invoiceNumber,
+            req.company!.name,
+            req.company!.email,
+            plan.name,
+            amount,
+            ADMIN_URL
+          ).catch(() => {});
+        }
+      })
+      .catch(() => {});
 
     res.status(201).json({
       message: "Invoice created",

@@ -38,7 +38,7 @@ export function SeatLimitCard() {
           <div className="flex justify-between mb-2">
             <span className="font-medium">Admin Seats</span>
             <span className="text-sm font-semibold">
-              {adminSeats.used} / {adminSeats.limit}
+              {adminSeats.used} / {adminSeats.limit === -1 ? "∞" : adminSeats.limit}
             </span>
           </div>
           <div className="w-full bg-muted-foreground/20 rounded-full h-2">
@@ -46,11 +46,11 @@ export function SeatLimitCard() {
               className={`h-2 rounded-full transition-all ${
                 adminSeats.percentage > 80 ? "bg-red-500" : "bg-emerald-500"
               }`}
-              style={{ width: `${adminSeats.percentage}%` }}
+              style={{ width: `${adminSeats.limit === -1 ? 20 : adminSeats.percentage}%` }}
             />
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            {adminSeats.remaining} seat(s) remaining
+            {adminSeats.limit === -1 ? "Unlimited" : `${adminSeats.remaining} seat(s) remaining`}
           </p>
         </div>
       )}
@@ -61,7 +61,7 @@ export function SeatLimitCard() {
           <div className="flex justify-between mb-2">
             <span className="font-medium">Employee Seats</span>
             <span className="text-sm font-semibold">
-              {employeeSeats.used} / {employeeSeats.limit}
+              {employeeSeats.used} / {employeeSeats.limit === -1 ? "∞" : employeeSeats.limit}
             </span>
           </div>
           <div className="w-full bg-muted-foreground/20 rounded-full h-2">
@@ -69,11 +69,11 @@ export function SeatLimitCard() {
               className={`h-2 rounded-full transition-all ${
                 employeeSeats.percentage > 80 ? "bg-red-500" : "bg-emerald-500"
               }`}
-              style={{ width: `${employeeSeats.percentage}%` }}
+              style={{ width: `${employeeSeats.limit === -1 ? 20 : employeeSeats.percentage}%` }}
             />
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            {employeeSeats.remaining} seat(s) remaining
+            {employeeSeats.limit === -1 ? "Unlimited" : `${employeeSeats.remaining} seat(s) remaining`}
           </p>
         </div>
       )}

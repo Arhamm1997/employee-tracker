@@ -16,7 +16,6 @@ import {
   apiGetEmployees,
   apiCreateEmployee,
   apiDeleteEmployee,
-  apiGetSettings,
   apiGetAgentDownload,
 } from "../lib/api";
 import type { CreateEmployeeResponse, AgentDownloadInfo } from "../lib/api";
@@ -91,18 +90,17 @@ export function EmployeesPage() {
   const [downloadLoading, setDownloadLoading] = useState(false);
   const [downloadError, setDownloadError] = useState("");
 
-  // Employee limit
-  const [maxEmployees, setMaxEmployees] = useState<number | null>(null);
-  const { refreshSeatInfo } = useSubscription();
+  // Employee limit from subscription plan
+  const { seatInfo, refreshSeatInfo } = useSubscription();
+  const maxEmployees = seatInfo
+    ? (seatInfo.employee_seats.limit === -1 ? null : seatInfo.employee_seats.limit)
+    : null;
 
   useEffect(() => {
     apiGetEmployees()
       .then(setEmployees)
       .catch(console.error)
       .finally(() => setLoading(false));
-    apiGetSettings()
-      .then((s) => setMaxEmployees((s as any).maxEmployees ?? null))
-      .catch(() => {});
   }, []);
 
   const handleDelete = async () => {

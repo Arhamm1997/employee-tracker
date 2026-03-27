@@ -127,7 +127,7 @@ router.get("/subscription/info", authenticate, async (req: Request, res: Respons
     ]);
 
     const maxEmployees = subscription?.plan?.maxSeats ?? settings?.maxEmployees ?? 10;
-    const maxAdmins = 5;
+    const maxAdmins = subscription?.plan?.maxAdmins ?? 5;
 
     const info = {
       plan: {
@@ -153,9 +153,9 @@ router.get("/subscription/info", authenticate, async (req: Request, res: Respons
       },
       admin_seats: {
         used: adminCount,
-        limit: maxAdmins,
-        remaining: Math.max(0, maxAdmins - adminCount),
-        percentage: Math.round((adminCount / maxAdmins) * 100),
+        limit: maxAdmins === -1 ? -1 : maxAdmins,
+        remaining: maxAdmins === -1 ? -1 : Math.max(0, maxAdmins - adminCount),
+        percentage: maxAdmins === -1 ? 0 : Math.round((adminCount / maxAdmins) * 100),
       },
       employee_seats: {
         used: employeeCount,
@@ -163,7 +163,7 @@ router.get("/subscription/info", authenticate, async (req: Request, res: Respons
         remaining: maxEmployees === -1 ? -1 : Math.max(0, maxEmployees - employeeCount),
         percentage: maxEmployees === -1 ? 0 : Math.round((employeeCount / maxEmployees) * 100),
       },
-      can_add_admin: adminCount < maxAdmins,
+      can_add_admin: maxAdmins === -1 ? true : adminCount < maxAdmins,
       can_add_employee: maxEmployees === -1 ? true : employeeCount < maxEmployees,
     };
 
