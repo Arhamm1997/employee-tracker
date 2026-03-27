@@ -32,6 +32,9 @@ cloudinary.config({
 
 const app = express();
 
+// Trust proxy (required for express-rate-limit behind nginx)
+app.set('trust proxy', 1);
+
 // ── Security Headers ─────────────────────────────────────────────────────────
 app.use(
   helmet({
