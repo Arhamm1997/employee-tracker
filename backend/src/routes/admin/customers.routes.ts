@@ -536,7 +536,18 @@ router.delete("/:id", async (req: AdminRequest, res: Response) => {
       await prisma.agentRefreshToken.deleteMany({ where: { companyId: req.params.id } });
     }
 
+    // Delete support ticket replies first (FK: ticketId → SupportTicket)
+    const tickets = await prisma.supportTicket.findMany({
+      where: { companyId: req.params.id },
+      select: { id: true },
+    });
+    if (tickets.length > 0) {
+      await prisma.ticketReply.deleteMany({ where: { ticketId: { in: tickets.map((t) => t.id) } } });
+      await prisma.supportTicket.deleteMany({ where: { companyId: req.params.id } });
+    }
+
     await Promise.all([
+      prisma.planUpgradeRequest.deleteMany({ where: { companyId: req.params.id } }),
       prisma.invoice.deleteMany({ where: { companyId: req.params.id } }),
       prisma.auditLog.deleteMany({ where: { company_id: req.params.id } }),
       prisma.admin.deleteMany({ where: { companyId: req.params.id } }),
@@ -544,6 +555,7 @@ router.delete("/:id", async (req: AdminRequest, res: Response) => {
       prisma.subscription.deleteMany({ where: { companyId: req.params.id } }),
       prisma.emailVerificationToken.deleteMany({ where: { companyId: req.params.id } }),
       prisma.passwordResetToken.deleteMany({ where: { companyId: req.params.id } }),
+      prisma.agentRefreshToken.deleteMany({ where: { companyId: req.params.id } }),
     ]);
 
     await prisma.company.delete({ where: { id: req.params.id } });
