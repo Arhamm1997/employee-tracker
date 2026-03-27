@@ -400,6 +400,7 @@ export function SettingsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="Asia/Karachi">Pakistan Time (PKT, UTC+5)</SelectItem>
                     <SelectItem value="America/New_York">Eastern Time</SelectItem>
                     <SelectItem value="America/Chicago">Central Time</SelectItem>
                     <SelectItem value="America/Denver">Mountain Time</SelectItem>
