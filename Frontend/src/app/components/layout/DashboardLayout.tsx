@@ -94,7 +94,12 @@ export function DashboardLayout() {
           <Shield className="w-4.5 h-4.5 text-white" />
         </div>
         {expanded && (
-          <span className="text-white font-semibold whitespace-nowrap" style={{ fontSize: "15px" }}>MonitorHub</span>
+          <div className="flex flex-col">
+            <span className="text-white font-semibold whitespace-nowrap" style={{ fontSize: "15px" }}>MonitorHub</span>
+            {user?.companyName && (
+              <span className="text-[#a78bfa] whitespace-nowrap truncate" style={{ fontSize: "11px" }}>{user.companyName}</span>
+            )}
+          </div>
         )}
         {!mobile && expanded && (
           <button
@@ -321,6 +326,9 @@ export function DashboardLayout() {
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium">{user?.name}</p>
                     <p className="text-xs text-muted-foreground">{user?.email}</p>
+                    {user?.companyName && (
+                      <p className="text-xs text-muted-foreground">{user.companyName}</p>
+                    )}
                     <Badge
                       variant={isSuperAdmin ? "default" : "secondary"}
                       className={`w-fit mt-1 ${isSuperAdmin ? "bg-[#6366f1] hover:bg-[#6366f1]" : ""}`}

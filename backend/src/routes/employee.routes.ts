@@ -13,6 +13,7 @@ import {
   disableEmployee,
   enableEmployee,
   createEmployee,
+  updateEmployee,
   deleteEmployee,
   uploadAvatar,
   avatarUpload,
@@ -46,6 +47,7 @@ router.get("/:id/keylog", checkFeature("keylog"), getKeylogHistory);
 router.get("/:id/file-activity", checkFeature("fileActivity"), getFileActivity);
 router.get("/:id/print-logs", checkFeature("printLogs"), getPrintLogs);
 router.delete("/reset-all-data", requireSuperAdmin, resetAllData);
+router.put("/:id", requireSuperAdmin, updateEmployee);
 router.put("/:id/disable", requireSuperAdmin, disableEmployee);
 router.put("/:id/enable", requireSuperAdmin, enableEmployee);
 router.put("/:id/avatar", requireSuperAdmin, avatarUpload.single("avatar"), uploadAvatar);

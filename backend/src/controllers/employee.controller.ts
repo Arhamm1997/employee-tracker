@@ -3,8 +3,10 @@ import { randomUUID } from "crypto";
 import path from "path";
 import fs from "fs";
 import multer from "multer";
+import { z } from "zod";
 import prisma from "../lib/prisma";
 import { AuthRequest } from "../middleware/auth.middleware";
+import { auditLog } from "../lib/audit";
 
 // ─── Avatar upload multer ─────────────────────────────────────────────────────
 const AVATARS_DIR = path.join(process.cwd(), "uploads", "avatars");
@@ -752,6 +754,8 @@ export async function createEmployee(
       },
     });
 
+    await auditLog({ companyId, userId: req.admin!.id, action: "EMPLOYEE_CREATED", entityType: "Employee", entityId: employee.id, changes: { name, email, department }, ip: req.ip });
+
     res.status(201).json({
       id: employee.id,
       name: employee.name,
@@ -766,13 +770,26 @@ export async function createEmployee(
   }
 }
 
-export async function deleteEmployee(
+const updateEmployeeSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  email: z.string().email().optional(),
+  department: z.string().min(1).max(100).optional(),
+  isActive: z.boolean().optional(),
+});
+
+export async function updateEmployee(
   req: AuthRequest,
   res: Response,
   next: NextFunction
 ): Promise<void> {
   try {
-    const companyId = req.admin?.companyId;
+    const parsed = updateEmployeeSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ message: "Validation failed", errors: parsed.error.flatten().fieldErrors });
+      return;
+    }
+    const body = parsed.data;
+    const companyId = req.admin?.companyId ?? null;
     const emp = await prisma.employee.findFirst({
       where: { id: req.params.id, ...(companyId ? { companyId } : {}) },
       select: { id: true },
@@ -781,7 +798,39 @@ export async function deleteEmployee(
       res.status(404).json({ message: "Employee not found" });
       return;
     }
+    const updated = await prisma.employee.update({
+      where: { id: emp.id },
+      data: {
+        ...(body.name !== undefined && { name: body.name }),
+        ...(body.email !== undefined && { email: body.email }),
+        ...(body.department !== undefined && { department: body.department }),
+        ...(body.isActive !== undefined && { isActive: body.isActive }),
+      },
+    });
+    res.json({ success: true, id: updated.id, name: updated.name, email: updated.email, department: updated.department, isActive: updated.isActive });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function deleteEmployee(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const companyId = req.admin?.companyId ?? null;
+    const id = req.params.id;
+    const emp = await prisma.employee.findFirst({
+      where: { id, ...(companyId ? { companyId } : {}) },
+      select: { id: true },
+    });
+    if (!emp) {
+      res.status(404).json({ message: "Employee not found" });
+      return;
+    }
     await prisma.employee.delete({ where: { id: emp.id } });
+    await auditLog({ companyId, userId: req.admin!.id, action: "EMPLOYEE_DELETED", entityType: "Employee", entityId: id, ip: req.ip });
     res.json({ success: true });
   } catch (err) {
     next(err);
@@ -878,6 +927,8 @@ export async function sendRemoteCommand(
       where: { id: emp.id },
       data: { pendingCommand: command === "clear" ? null : command },
     });
+
+    await auditLog({ companyId: req.admin?.companyId ?? null, userId: req.admin!.id, action: `REMOTE_COMMAND_${command.toUpperCase()}`, entityType: "Employee", entityId: req.params.id, ip: req.ip });
 
     res.json({ success: true, command });
   } catch (err) {

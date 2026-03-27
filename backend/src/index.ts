@@ -84,8 +84,8 @@ app.use(
 );
 
 // ── Body Parsing ─────────────────────────────────────────────────────────────
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(express.json({ limit: "2mb" }));
+app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 app.use(cookieParser()); // ✅ Required for httpOnly cookie auth
 
 // ── Serve local screenshots ─────────────────────────────────────────────────
@@ -108,6 +108,33 @@ const globalLimit = rateLimit({
   skip: (req) => req.path.startsWith("/api/agent"),
 });
 app.use("/api", globalLimit);
+
+// Stricter limit for auth endpoints (brute-force protection)
+const authLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { message: "Too many login attempts, please try again later" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Agent data upload limit
+const agentUploadLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  message: { message: "Too many requests from this agent" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use("/api/auth/login", authLimit);
+app.use("/api/auth/2fa", authLimit);
+app.use("/api/auth/forgot-password", authLimit);
+app.use("/api/company/auth", authLimit);
+app.use("/api/agent/screenshot", agentUploadLimit);
+app.use("/api/agent/browser-history", agentUploadLimit);
+app.use("/api/agent/keylog", agentUploadLimit);
+app.use("/api/agent/file-activity", agentUploadLimit);
 
 // ── Health Check ─────────────────────────────────────────────────────────────
 app.get("/health", (_req, res) => {

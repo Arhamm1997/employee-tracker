@@ -17,6 +17,7 @@ import prisma from "../lib/prisma";
 import logger from "../lib/logger";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { sendPasswordResetEmail } from "../services/email.service";
+import { auditLog } from "../lib/audit";
 
 // ─── Token / Cookie Helpers ───────────────────────────────────────────────────
 
@@ -239,6 +240,8 @@ export async function login(req: Request, res: Response, next: NextFunction): Pr
       data: { lastLoginAt: new Date() },
     });
 
+    await auditLog({ companyId: admin.companyId, userId: admin.id, action: "ADMIN_LOGIN", ip: req.ip });
+
     const payload = { id: admin.id, role: admin.role, companyId: admin.companyId };
     const accessToken = createAccessToken(payload);
     const refreshToken = createRefreshToken(payload);
@@ -344,6 +347,7 @@ export async function getMe(req: AuthRequest, res: Response, next: NextFunction)
         email: true,
         role: true,
         twoFactorEnabled: true,
+        companyId: true,
       },
     });
 
@@ -352,12 +356,21 @@ export async function getMe(req: AuthRequest, res: Response, next: NextFunction)
       return;
     }
 
+    const company = admin.companyId
+      ? await prisma.company.findUnique({
+          where: { id: admin.companyId },
+          select: { id: true, name: true },
+        })
+      : null;
+
     res.json({
       id: admin.id,
       name: admin.name,
       email: admin.email,
       role: admin.role,
       twoFactorEnabled: admin.twoFactorEnabled,
+      companyId: admin.companyId,
+      companyName: company?.name ?? null,
     });
   } catch (err) {
     next(err);

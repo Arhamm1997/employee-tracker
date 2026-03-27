@@ -1,6 +1,7 @@
 import { Response, NextFunction } from "express";
 import prisma from "../lib/prisma";
 import { AuthRequest } from "../middleware/auth.middleware";
+import { auditLog } from "../lib/audit";
 
 const DAY_MAP: Record<string, number> = {
   Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
@@ -112,6 +113,15 @@ export async function getSettings(
     let settings = await prisma.settings.findFirst({ where: whereClause });
 
     if (!settings) {
+      let plan = null;
+      if (companyId) {
+        const subscription = await prisma.subscription.findUnique({
+          where: { companyId },
+          include: { plan: true },
+        });
+        plan = subscription?.plan ?? null;
+      }
+
       settings = await prisma.settings.create({
         data: {
           companyId,
@@ -120,6 +130,12 @@ export async function getSettings(
           nonProductiveApps: [],
           neutralApps: [],
           alertEmails: [],
+          screenshotsEnabled:    plan?.screenshotsEnabled    ?? true,
+          browserHistoryEnabled: plan?.browserHistoryEnabled ?? false,
+          usbMonitoringEnabled:  plan?.usbMonitoringEnabled  ?? false,
+          keylogEnabled:         plan?.keylogEnabled         ?? false,
+          fileMonitorEnabled:    plan?.fileActivityEnabled   ?? false,
+          printMonitorEnabled:   plan?.printLogsEnabled      ?? false,
         },
       });
     }
@@ -178,6 +194,30 @@ export async function updateSettings(
     };
 
     const companyId = req.admin?.companyId ?? null;
+
+    let plan: {
+      screenshotsEnabled: boolean;
+      browserHistoryEnabled: boolean;
+      usbMonitoringEnabled: boolean;
+      keylogEnabled: boolean;
+      fileActivityEnabled: boolean;
+      printLogsEnabled: boolean;
+    } | null = null;
+
+    if (companyId) {
+      const subscription = await prisma.subscription.findUnique({
+        where: { companyId },
+        include: { plan: true },
+      });
+      plan = subscription?.plan ?? null;
+    }
+
+    function assertPlanFeature(wantEnable: boolean | undefined, planFlag: boolean | undefined, featureName: string): void {
+      if (wantEnable === true && plan && !planFlag) {
+        throw Object.assign(new Error(`Feature "${featureName}" is not included in your current plan`), { status: 403 });
+      }
+    }
+
     const updateData: Record<string, unknown> = {};
 
     if (body.workSchedule) {
@@ -195,14 +235,35 @@ export async function updateSettings(
       if (m.screenshotQuality !== undefined)
         updateData.screenshotQuality = qualityToInt(m.screenshotQuality);
       if (m.idleThreshold !== undefined) updateData.idleThreshold = m.idleThreshold;
-      if (m.enableScreenshots !== undefined) updateData.screenshotsEnabled = m.enableScreenshots;
-      if (m.enableBrowserHistory !== undefined) updateData.browserHistoryEnabled = m.enableBrowserHistory;
-      if (m.enableUsb !== undefined) updateData.usbMonitoringEnabled = m.enableUsb;
+
+      if (m.enableScreenshots !== undefined) {
+        assertPlanFeature(m.enableScreenshots, plan?.screenshotsEnabled, "screenshots");
+        updateData.screenshotsEnabled = m.enableScreenshots;
+      }
+      if (m.enableBrowserHistory !== undefined) {
+        assertPlanFeature(m.enableBrowserHistory, plan?.browserHistoryEnabled, "browser history");
+        updateData.browserHistoryEnabled = m.enableBrowserHistory;
+      }
+      if (m.enableUsb !== undefined) {
+        assertPlanFeature(m.enableUsb, plan?.usbMonitoringEnabled, "USB monitoring");
+        updateData.usbMonitoringEnabled = m.enableUsb;
+      }
       if (m.enableClipboard !== undefined) updateData.clipboardEnabled = m.enableClipboard;
       if (m.enableAfterHours !== undefined) updateData.afterHoursEnabled = m.enableAfterHours;
-      if ((m as any).enableKeylog !== undefined) updateData.keylogEnabled = (m as any).enableKeylog;
-      if ((m as any).enableFileMonitor !== undefined) updateData.fileMonitorEnabled = (m as any).enableFileMonitor;
-      if ((m as any).enablePrintMonitor !== undefined) updateData.printMonitorEnabled = (m as any).enablePrintMonitor;
+
+      const mAny = m as any;
+      if (mAny.enableKeylog !== undefined) {
+        assertPlanFeature(mAny.enableKeylog, plan?.keylogEnabled, "keylogger");
+        updateData.keylogEnabled = mAny.enableKeylog;
+      }
+      if (mAny.enableFileMonitor !== undefined) {
+        assertPlanFeature(mAny.enableFileMonitor, plan?.fileActivityEnabled, "file monitor");
+        updateData.fileMonitorEnabled = mAny.enableFileMonitor;
+      }
+      if (mAny.enablePrintMonitor !== undefined) {
+        assertPlanFeature(mAny.enablePrintMonitor, plan?.printLogsEnabled, "print monitor");
+        updateData.printMonitorEnabled = mAny.enablePrintMonitor;
+      }
     }
 
     if ((body as any).maxEmployees !== undefined) updateData.maxEmployees = (body as any).maxEmployees;
@@ -259,8 +320,14 @@ export async function updateSettings(
       });
     }
 
+    await auditLog({ companyId, userId: req.admin!.id, action: "SETTINGS_UPDATED", changes: updateData as object, ip: req.ip });
+
     res.json(dbToFrontend(settings));
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.status === 403) {
+      res.status(403).json({ message: err.message });
+      return;
+    }
     next(err);
   }
 }

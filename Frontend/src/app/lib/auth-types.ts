@@ -6,6 +6,8 @@ export interface User {
   email: string;
   role: "super_admin" | "viewer";
   twoFactorEnabled?: boolean;
+  companyId?: string;
+  companyName?: string | null;
 }
 
 export interface AuthContextType {

@@ -17,11 +17,13 @@ import {
 } from "recharts";
 import { apiGetDashboard, type DashboardData } from "../lib/api";
 import { useSocket } from "../lib/socket-context";
+import { useAuth } from "../lib/auth-types";
 import { formatDistanceToNow } from "date-fns";
 
 export function DashboardPage() {
   const navigate = useNavigate();
   const { latestActivities } = useSocket();
+  const { user } = useAuth();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -70,6 +72,14 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {/* Greeting */}
+      <div>
+        <h1 className="text-2xl font-bold">Welcome back, {user?.name}</h1>
+        {user?.companyName && (
+          <p className="text-muted-foreground text-sm">{user.companyName}</p>
+        )}
+      </div>
+
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {statCards.map((stat, i) => (

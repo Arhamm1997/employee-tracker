@@ -75,6 +75,8 @@ export interface LoginResponse {
     email: string;
     role: "super_admin" | "viewer";
     twoFactorEnabled?: boolean;
+    companyId?: string;
+    companyName?: string | null;
   };
 }
 
@@ -91,7 +93,12 @@ type RawLoginResponse = {
   data: {
     accessToken?: string;
     user?: LoginResponse["user"];
-    company?: unknown;
+    company?: {
+      id: string;
+      name: string;
+      subscriptionStatus: string | null;
+      subscriptionExpiresAt: string | null;
+    };
     requires2FA?: boolean;
     tempToken?: string;
   };
@@ -103,7 +110,11 @@ export const apiLogin = async (email: string, password: string): Promise<LoginRe
   if (d.requires2FA) {
     return { requires2FA: true, tempToken: d.tempToken! };
   }
-  return { token: d.accessToken!, user: d.user! };
+  const user = d.user!;
+  if (d.company?.name && !user.companyName) {
+    user.companyName = d.company.name;
+  }
+  return { token: d.accessToken!, user };
 };
 
 export const apiGetMe = () =>
