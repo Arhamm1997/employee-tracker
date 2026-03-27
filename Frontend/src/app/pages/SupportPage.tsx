@@ -78,7 +78,7 @@ export function SupportPage() {
       setSubject(""); setDescription(""); setPriority("medium");
       fetchTickets();
     } catch {
-      alert("Ticket submit karne mein masla aaya.");
+      alert("Failed to submit ticket. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -96,7 +96,7 @@ export function SupportPage() {
       setReplyMsg("");
       fetchDetail(viewTicket.id);
     } catch {
-      alert("Reply send karne mein masla aaya.");
+      alert("Failed to send reply. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -107,7 +107,7 @@ export function SupportPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Support</h1>
-          <p className="text-muted-foreground text-sm mt-1">Koi bhi masla ho toh humse rabta karein.</p>
+          <p className="text-muted-foreground text-sm mt-1">Having an issue? Get in touch with our support team.</p>
         </div>
         <button
           onClick={() => setShowNew(true)}
@@ -130,7 +130,7 @@ export function SupportPage() {
               <input
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                placeholder="Masla ka mukhtasar bayan..."
+                placeholder="Brief summary of your issue..."
                 className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
@@ -139,7 +139,7 @@ export function SupportPage() {
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Masle ki tafseel likhen..."
+                placeholder="Describe your issue in detail..."
                 rows={4}
                 className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary resize-none"
               />
@@ -151,10 +151,10 @@ export function SupportPage() {
                 onChange={(e) => setPriority(e.target.value)}
                 className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary"
               >
-                <option value="low">Low — Aam masla</option>
-                <option value="medium">Medium — Kuch urgent</option>
-                <option value="high">High — Jaldi chahiye</option>
-                <option value="critical">Critical — Kaam band ho gaya</option>
+                <option value="low">Low — General question</option>
+                <option value="medium">Medium — Needs attention</option>
+                <option value="high">High — Urgent issue</option>
+                <option value="critical">Critical — System down</option>
               </select>
             </div>
             <div className="flex gap-3 pt-2">
@@ -169,7 +169,7 @@ export function SupportPage() {
                 disabled={!subject.trim() || !description.trim() || submitting}
                 className="flex-1 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
-                {submitting ? "Bhej raha hai..." : "Submit Ticket 🚀"}
+                {submitting ? "Submitting..." : "Submit Ticket"}
               </button>
             </div>
           </div>
@@ -208,7 +208,7 @@ export function SupportPage() {
                   className={`rounded-xl p-4 ${r.adminId ? "bg-primary/10 ml-8" : "bg-muted/40 mr-8"}`}
                 >
                   <p className="text-xs font-semibold text-muted-foreground mb-1">
-                    {r.adminId ? "🛡️ Support Team" : "Aap"} · {new Date(r.createdAt).toLocaleDateString()}
+                    {r.adminId ? "🛡️ Support Team" : "You"} · {new Date(r.createdAt).toLocaleDateString()}
                   </p>
                   <p className="text-sm">{r.message}</p>
                 </div>
@@ -220,7 +220,7 @@ export function SupportPage() {
                 <textarea
                   value={replyMsg}
                   onChange={(e) => setReplyMsg(e.target.value)}
-                  placeholder="Reply likhein..."
+                  placeholder="Write your reply..."
                   rows={3}
                   className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                 />
@@ -229,7 +229,7 @@ export function SupportPage() {
                   disabled={!replyMsg.trim() || submitting}
                   className="w-full py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors"
                 >
-                  {submitting ? "Bhej raha hai..." : "Reply Karein"}
+                  {submitting ? "Sending..." : "Send Reply"}
                 </button>
               </div>
             )}
@@ -247,8 +247,8 @@ export function SupportPage() {
       ) : tickets.length === 0 ? (
         <div className="bg-card border border-border rounded-xl p-12 text-center">
           <div className="text-5xl mb-4">🎫</div>
-          <p className="font-semibold text-lg">Koi ticket nahi mila</p>
-          <p className="text-muted-foreground text-sm mt-1">Koi masla ho toh "New Ticket" button se rabta karein.</p>
+          <p className="font-semibold text-lg">No tickets found</p>
+          <p className="text-muted-foreground text-sm mt-1">Click "New Ticket" to get in touch with our support team.</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -268,7 +268,7 @@ export function SupportPage() {
                       {ticket.priority}
                     </span>
                     {ticket.replies.some((r) => r.adminId) && (
-                      <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Admin reply aya</span>
+                      <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Admin replied</span>
                     )}
                   </div>
                   <p className="font-semibold truncate">{ticket.subject}</p>

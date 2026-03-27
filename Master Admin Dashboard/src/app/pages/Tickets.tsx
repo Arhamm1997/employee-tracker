@@ -22,7 +22,7 @@ import { format } from 'date-fns';
 
 const replySchema = z.object({
   message: z.string().min(1, 'Message is required'),
-  isInternal: z.boolean(),
+  isInternal: z.boolean().default(false),
 });
 
 type ReplyFormData = z.infer<typeof replySchema>;
@@ -104,7 +104,7 @@ export default function Tickets() {
     formState: { errors },
   } = useForm<ReplyFormData>({
     resolver: zodResolver(replySchema),
-    defaultValues: { isInternal: false },
+    defaultValues: { message: '', isInternal: false },
   });
 
   const statusMutation = useMutation({
