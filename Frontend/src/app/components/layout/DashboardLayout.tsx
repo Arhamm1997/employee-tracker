@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Outlet, useLocation, useNavigate, Link } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
+import { usePlanUpgradeConfetti } from "../../hooks/usePlanUpgradeConfetti";
 import {
   LayoutDashboard, Users, Camera, AlertTriangle, FileText,
   Settings, Shield, Bell, Moon, Sun, LogOut, Menu, ChevronLeft,
@@ -53,6 +54,7 @@ export function DashboardLayout() {
   const { isDark, toggle } = useTheme();
   const { unreadAlerts, latestAlerts } = useSocket();
   const { seatInfo } = useSubscription();
+  const { upgradedTo, dismissBanner } = usePlanUpgradeConfetti(seatInfo);
 
   // Redirect to login if not authenticated
   React.useEffect(() => {
@@ -367,6 +369,39 @@ export function DashboardLayout() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2 }}
           >
+            {/* Plan Upgrade Banner */}
+            <AnimatePresence>
+              {upgradedTo && (
+                <motion.div
+                  initial={{ opacity: 0, y: -60 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -60 }}
+                  transition={{ type: "spring", damping: 20, stiffness: 200 }}
+                  className="mx-4 mt-4 mb-0 rounded-xl overflow-hidden"
+                >
+                  <div className="relative bg-gradient-to-r from-[#6366f1] via-[#8b5cf6] to-[#ec4899] p-4 flex items-center gap-3 shadow-lg">
+                    <span className="text-3xl select-none">🎉</span>
+                    <div className="flex-1">
+                      <p className="text-white font-bold text-base leading-tight">
+                        Plan upgrade ho gaya! Welcome to {upgradedTo}!
+                      </p>
+                      <p className="text-white/80 text-xs mt-0.5">
+                        Aapke naye features ab available hain. Enjoy karo! 🚀
+                      </p>
+                    </div>
+                    <span className="text-3xl select-none">🎊</span>
+                    <button
+                      onClick={dismissBanner}
+                      className="ml-2 text-white/70 hover:text-white transition-colors text-xl leading-none"
+                      aria-label="Dismiss"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <Outlet />
           </motion.div>
         </main>
