@@ -36,6 +36,7 @@ export default function SignupPage() {
   const [apiError, setApiError] = useState("");
   const [loading, setLoading] = useState(false);
   const [successEmail, setSuccessEmail] = useState("");
+  const [directVerifyUrl, setDirectVerifyUrl] = useState("");
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const { name, value } = e.target;
@@ -58,11 +59,12 @@ export default function SignupPage() {
 
     setLoading(true);
     try {
-      await api.register({
+      const res = await api.register({
         companyName: form.companyName,
         email: form.email,
         password: form.password,
       });
+      if (res.verificationUrl) setDirectVerifyUrl(res.verificationUrl);
       setSuccessEmail(form.email);
     } catch (err) {
       setApiError(err instanceof Error ? err.message : "Registration failed. Please try again.");
@@ -81,18 +83,33 @@ export default function SignupPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Check Your Email!</h2>
-          <p className="text-gray-500 mb-1">We sent a verification link to:</p>
-          <p className="font-semibold text-gray-800 mb-5">{successEmail}</p>
-          <p className="text-sm text-gray-400 mb-4">
-            The link expires in 24 hours. Check your inbox and spam folder.
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            {directVerifyUrl ? "Account Created!" : "Check Your Email!"}
+          </h2>
+          <p className="text-gray-500 mb-1">
+            {directVerifyUrl ? "Click below to verify your account:" : "We sent a verification link to:"}
           </p>
-          <Link
-            href={`/verify-email?email=${encodeURIComponent(successEmail)}`}
-            className="text-indigo-600 text-sm font-medium hover:underline"
-          >
-            Didn&apos;t receive it? Resend →
-          </Link>
+          <p className="font-semibold text-gray-800 mb-5">{successEmail}</p>
+          {directVerifyUrl ? (
+            <a
+              href={directVerifyUrl}
+              className="inline-block bg-indigo-600 text-white font-semibold px-6 py-3 rounded-xl hover:bg-indigo-700 transition-colors mb-4"
+            >
+              Verify My Account →
+            </a>
+          ) : (
+            <p className="text-sm text-gray-400 mb-4">
+              The link expires in 24 hours. Check your inbox and spam folder.
+            </p>
+          )}
+          <div className="mt-2">
+            <Link
+              href={`/verify-email?email=${encodeURIComponent(successEmail)}`}
+              className="text-indigo-600 text-sm font-medium hover:underline"
+            >
+              Didn&apos;t receive it? Resend →
+            </Link>
+          </div>
         </div>
       </div>
     );

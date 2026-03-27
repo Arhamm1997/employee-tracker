@@ -77,7 +77,7 @@ export interface SubscriptionUsage {
 
 export const api = {
   register(body: { companyName: string; email: string; password: string }) {
-    return request<{ message: string }>("/company/auth/register", { method: "POST", body: JSON.stringify(body) });
+    return request<{ message: string; verificationUrl?: string }>("/company/auth/register", { method: "POST", body: JSON.stringify(body) });
   },
   verifyEmail(token: string) {
     return request<{ message: string; companyId: string; token: string }>(`/company/auth/verify-email?token=${encodeURIComponent(token)}`);
