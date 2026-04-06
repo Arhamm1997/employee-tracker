@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router";
+import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate, useSearchParams } from "react-router";
 import {
   Clock, Camera, Globe, AppWindow, Bell, Database,
   Plus, X, Trash2, Download, AlertTriangle, Lock,
-  Shield, KeyRound, Loader2, CheckCircle
+  Shield, KeyRound, Loader2, CheckCircle, Slack,
+  MessageSquare, Send, PlugZap
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
@@ -20,8 +21,15 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
 } from "../components/ui/alert-dialog";
-import { apiGetSettings, apiSaveSettings, apiResetAllData, apiDownloadBackup, apiDeleteAccount, apiResetCompleteApp, api2FADisable, apiGetAgentLatestVersion } from "../lib/api";
+import {
+  apiGetSettings, apiSaveSettings, apiResetAllData, apiDownloadBackup, apiDeleteAccount,
+  apiResetCompleteApp, api2FADisable, apiGetAgentLatestVersion,
+  apiGetSlackIntegration, apiGetSlackSettings, apiUpdateSlackSettings, apiGetSlackChannels,
+  apiSendSlackTestAlert, apiDisconnectSlack,
+  type SlackIntegration, type SlackSettings, type SlackChannel,
+} from "../lib/api";
 import type { AgentLatestVersion } from "../lib/api";
+import { SlackOAuthModal } from "../components/slack/SlackOAuthModal";
 import type { AppSettings } from "../lib/types";
 import { toast } from "sonner";
 import { useAuth } from "../lib/auth-types";
@@ -83,6 +91,7 @@ export function SettingsPage() {
   const { user, refreshUser } = useAuth();
   const isSuperAdmin = user?.role === "super_admin";
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { seatInfo } = useSubscription();
   // Use the same feature key resolution as hasFeature() in subscription-context
   const planFeatures = (seatInfo?.plan?.features ?? (seatInfo as any)?.features ?? {}) as Record<string, boolean | undefined>;
@@ -114,6 +123,115 @@ export function SettingsPage() {
   const [disabling2FA, setDisabling2FA] = useState(false);
   const [disable2FACode, setDisable2FACode] = useState("");
   const [disabling2FALoading, setDisabling2FALoading] = useState(false);
+
+  // Slack integration state
+  const [slackIntegration, setSlackIntegration] = useState<SlackIntegration | null>(null);
+  const [slackSettings, setSlackSettings] = useState<SlackSettings>({
+    slackEnabled: false, slackChannelId: null, slackAlertTypes: [], slackThreadReplies: true,
+  });
+  const [slackChannels, setSlackChannels] = useState<SlackChannel[]>([]);
+  const [slackLoading, setSlackLoading] = useState(true);
+  const [slackConnectOpen, setSlackConnectOpen] = useState(false);
+  const [slackSaving, setSlackSaving] = useState(false);
+  const [slackTesting, setSlackTesting] = useState(false);
+  const [slackChannelsLoading, setSlackChannelsLoading] = useState(false);
+  const [slackDisconnecting, setSlackDisconnecting] = useState(false);
+
+  const loadSlackData = useCallback(async () => {
+    setSlackLoading(true);
+    try {
+      const [integrationRes, settingsRes] = await Promise.all([
+        apiGetSlackIntegration().catch(() => ({ connected: false })),
+        apiGetSlackSettings().catch(() => null),
+      ]);
+      if (integrationRes.connected && integrationRes.integration) {
+        setSlackIntegration(integrationRes.integration);
+      } else {
+        setSlackIntegration(null);
+      }
+      if (settingsRes) setSlackSettings(settingsRes);
+    } finally {
+      setSlackLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadSlackData();
+  }, [loadSlackData]);
+
+  // Handle Slack OAuth callback redirect
+  useEffect(() => {
+    const slackParam = searchParams.get("slack");
+    const tab = searchParams.get("tab");
+    if (tab === "integrations" && slackParam === "success") {
+      toast.success("Slack workspace connected successfully!");
+      loadSlackData();
+    } else if (tab === "integrations" && slackParam === "error") {
+      toast.error("Failed to connect Slack workspace. Please try again.");
+    }
+  }, [searchParams, loadSlackData]);
+
+  const loadSlackChannels = async () => {
+    setSlackChannelsLoading(true);
+    try {
+      const { channels } = await apiGetSlackChannels();
+      setSlackChannels(channels);
+    } catch {
+      toast.error("Failed to load Slack channels");
+    } finally {
+      setSlackChannelsLoading(false);
+    }
+  };
+
+  const saveSlackSettings = async (patch: Partial<SlackSettings>) => {
+    setSlackSaving(true);
+    try {
+      const updated = { ...slackSettings, ...patch };
+      setSlackSettings(updated);
+      await apiUpdateSlackSettings(patch);
+      toast.success("Slack settings saved");
+    } catch {
+      toast.error("Failed to save Slack settings");
+    } finally {
+      setSlackSaving(false);
+    }
+  };
+
+  const sendSlackTestAlert = async () => {
+    setSlackTesting(true);
+    try {
+      const res = await apiSendSlackTestAlert(slackSettings.slackChannelId ?? undefined);
+      toast.success(res.message || "Test alert sent to Slack!");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send test alert");
+    } finally {
+      setSlackTesting(false);
+    }
+  };
+
+  const disconnectSlack = async () => {
+    setSlackDisconnecting(true);
+    try {
+      await apiDisconnectSlack();
+      setSlackIntegration(null);
+      setSlackSettings(prev => ({ ...prev, slackEnabled: false }));
+      toast.success("Slack workspace disconnected");
+    } catch {
+      toast.error("Failed to disconnect Slack");
+    } finally {
+      setSlackDisconnecting(false);
+    }
+  };
+
+  const ALERT_TYPE_LABELS: Record<string, string> = {
+    blocked_site: "Blocked Site",
+    idle_long: "Long Idle",
+    new_software: "New Software",
+    after_hours: "After Hours",
+    usb_connected: "USB Connected",
+    clipboard_sensitive: "Clipboard Alert",
+    low_activity: "Low Activity",
+  };
 
   useEffect(() => {
     apiGetSettings()
@@ -308,7 +426,7 @@ export function SettingsPage() {
         </div>
       )}
 
-      <Tabs defaultValue="schedule">
+      <Tabs defaultValue={searchParams.get("tab") === "integrations" ? "integrations" : "schedule"}>
         <TabsList className="w-full justify-start flex-wrap h-auto gap-1 mb-4">
           <TabsTrigger value="schedule" className="gap-1.5"><Clock className="w-3.5 h-3.5" />Work Schedule</TabsTrigger>
           <TabsTrigger value="monitoring" className="gap-1.5"><Camera className="w-3.5 h-3.5" />Monitoring</TabsTrigger>
@@ -321,6 +439,7 @@ export function SettingsPage() {
           )}
           <TabsTrigger value="retention" className="gap-1.5"><Database className="w-3.5 h-3.5" />Data Retention</TabsTrigger>
           <TabsTrigger value="security" className="gap-1.5"><Shield className="w-3.5 h-3.5" />Security</TabsTrigger>
+          <TabsTrigger value="integrations" className="gap-1.5"><PlugZap className="w-3.5 h-3.5" />Integrations</TabsTrigger>
           {isSuperAdmin && (
             <>
               <TabsTrigger value="downloads" className="gap-1.5"><Download className="w-3.5 h-3.5" />Downloads</TabsTrigger>
@@ -1028,7 +1147,190 @@ export function SettingsPage() {
             </Card>
           </TabsContent>
         )}
+
+        {/* ── Integrations Tab ─────────────────────────────────────────────── */}
+        <TabsContent value="integrations">
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Slack className="w-5 h-5 text-[#4A154B]" />
+                  Slack Integration
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {slackLoading ? (
+                  <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                    <Loader2 className="w-4 h-4 animate-spin" />Loading...
+                  </div>
+                ) : !slackIntegration ? (
+                  /* ── Not connected ─────────────────────────────────────── */
+                  <div className="space-y-4">
+                    <div className="rounded-lg border bg-muted/30 p-5 text-center space-y-3">
+                      <Slack className="w-10 h-10 mx-auto text-[#4A154B] opacity-60" />
+                      <div>
+                        <p className="font-medium">Connect your Slack workspace</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Receive employee monitoring alerts in Slack and send messages to employees directly.
+                        </p>
+                      </div>
+                      {isSuperAdmin && (
+                        <Button onClick={() => setSlackConnectOpen(true)} className="gap-2 mt-2">
+                          <Slack className="w-4 h-4" />
+                          Connect to Slack
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  /* ── Connected ──────────────────────────────────────────── */
+                  <div className="space-y-5">
+                    {/* Workspace info */}
+                    <div className="flex items-center gap-3 p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(34,197,94,0.6)]" />
+                      <div>
+                        <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                          Connected to <span className="font-bold">{slackIntegration.teamName}</span>
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Connected on {new Date(slackIntegration.installedAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      {isSuperAdmin && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="ml-auto text-destructive hover:text-destructive"
+                          onClick={disconnectSlack}
+                          disabled={slackDisconnecting}
+                        >
+                          {slackDisconnecting ? <Loader2 className="w-3 h-3 animate-spin" /> : "Disconnect"}
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Enable Slack notifications */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label className="text-sm font-medium">Send Alerts to Slack</Label>
+                        <p className="text-xs text-muted-foreground">Post employee monitoring alerts to a Slack channel</p>
+                      </div>
+                      <Switch
+                        checked={slackSettings.slackEnabled}
+                        disabled={!isSuperAdmin || slackSaving}
+                        onCheckedChange={(v) => saveSlackSettings({ slackEnabled: v })}
+                      />
+                    </div>
+
+                    {slackSettings.slackEnabled && (
+                      <>
+                        {/* Channel selector */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-sm font-medium">Alert Channel</Label>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 text-xs"
+                              onClick={loadSlackChannels}
+                              disabled={slackChannelsLoading}
+                            >
+                              {slackChannelsLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : "Refresh"}
+                            </Button>
+                          </div>
+                          <Select
+                            value={slackSettings.slackChannelId ?? ""}
+                            onValueChange={(v) => saveSlackSettings({ slackChannelId: v || null })}
+                            disabled={!isSuperAdmin || slackSaving}
+                            onOpenChange={(open) => open && slackChannels.length === 0 && loadSlackChannels()}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a channel..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {slackChannels.map((ch) => (
+                                <SelectItem key={ch.id} value={ch.id}>
+                                  {ch.isPrivate ? "🔒" : "#"} {ch.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground">
+                            Choose which Slack channel receives alert notifications.
+                          </p>
+                        </div>
+
+                        {/* Alert type filter */}
+                        <div className="space-y-3">
+                          <Label className="text-sm font-medium">Alert Types to Post</Label>
+                          <p className="text-xs text-muted-foreground -mt-1">Leave all unchecked to send all alert types.</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            {Object.entries(ALERT_TYPE_LABELS).map(([key, label]) => {
+                              const checked = slackSettings.slackAlertTypes.length === 0 || slackSettings.slackAlertTypes.includes(key);
+                              return (
+                                <div key={key} className="flex items-center gap-2">
+                                  <Checkbox
+                                    id={`slack-alert-${key}`}
+                                    checked={checked}
+                                    disabled={!isSuperAdmin}
+                                    onCheckedChange={(v) => {
+                                      const current = slackSettings.slackAlertTypes.length === 0
+                                        ? Object.keys(ALERT_TYPE_LABELS)
+                                        : [...slackSettings.slackAlertTypes];
+                                      const updated = v ? [...new Set([...current, key])] : current.filter(t => t !== key);
+                                      const allSelected = updated.length === Object.keys(ALERT_TYPE_LABELS).length;
+                                      saveSlackSettings({ slackAlertTypes: allSelected ? [] : updated });
+                                    }}
+                                  />
+                                  <Label htmlFor={`slack-alert-${key}`} className="text-sm font-normal cursor-pointer">{label}</Label>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Threading option */}
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label className="text-sm font-medium">Thread Replies</Label>
+                            <p className="text-xs text-muted-foreground">Keep Slack replies organized in threads</p>
+                          </div>
+                          <Switch
+                            checked={slackSettings.slackThreadReplies}
+                            disabled={!isSuperAdmin || slackSaving}
+                            onCheckedChange={(v) => saveSlackSettings({ slackThreadReplies: v })}
+                          />
+                        </div>
+
+                        {/* Test alert button */}
+                        {isSuperAdmin && (
+                          <div className="pt-2 border-t">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-2"
+                              onClick={sendSlackTestAlert}
+                              disabled={slackTesting || !slackSettings.slackChannelId}
+                            >
+                              {slackTesting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                              Send Test Alert
+                            </Button>
+                            {!slackSettings.slackChannelId && (
+                              <p className="text-xs text-muted-foreground mt-1">Select a channel first to send a test alert.</p>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
       </Tabs>
+
+      <SlackOAuthModal open={slackConnectOpen} onClose={() => setSlackConnectOpen(false)} />
 
       {/* ── Dialogs (super_admin only - these are never shown to viewers) ── */}
       <AlertDialog open={showDeleteAccount} onOpenChange={(open) => { if (!deletingAccount) setShowDeleteAccount(open); }}>

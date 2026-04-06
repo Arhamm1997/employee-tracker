@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   AlertTriangle, Check, CheckCheck, Trash2,
-  ShieldAlert, Clock, Usb, Download, Activity
+  ShieldAlert, Clock, Usb, Download, Activity, MessageSquare
 } from "lucide-react";
 import { Card, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
@@ -13,8 +13,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
 } from "../components/ui/alert-dialog";
-import { apiGetAlerts, apiMarkAlertRead, apiMarkAllAlertsRead, apiDeleteAlert, apiGetEmployees } from "../lib/api";
+import { apiGetAlerts, apiMarkAlertRead, apiMarkAllAlertsRead, apiDeleteAlert, apiGetEmployees, apiGetSlackIntegration } from "../lib/api";
 import type { Alert, Employee } from "../lib/types";
+import { SlackRepliesBadge, SlackMessagesPanel } from "../components/slack/SlackMessagesPanel";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "../components/ui/sheet";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { useSocket } from "../lib/socket-context";
@@ -52,7 +54,16 @@ export function AlertsPage() {
   const [readFilter, setReadFilter] = useState("All");
   const [employeeFilter, setEmployeeFilter] = useState("All");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [slackPanelAlertId, setSlackPanelAlertId] = useState<string | null>(null);
+  const [slackConnected, setSlackConnected] = useState(false);
   const { setUnreadAlerts, latestAlerts } = useSocket();
+
+  // Check if Slack is connected
+  useEffect(() => {
+    apiGetSlackIntegration()
+      .then(res => setSlackConnected(res.connected))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     Promise.all([apiGetAlerts(), apiGetEmployees()])
@@ -240,6 +251,9 @@ export function AlertsPage() {
                       <span className="text-muted-foreground" style={{ fontSize: "12px" }}>
                         {format(new Date(alert.timestamp), "PPpp")}
                       </span>
+                      {slackConnected && (
+                        <SlackRepliesBadge alertId={alert.id} onClick={() => setSlackPanelAlertId(alert.id)} />
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
@@ -284,6 +298,21 @@ export function AlertsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Slack Messages Panel (Sheet) */}
+      <Sheet open={!!slackPanelAlertId} onOpenChange={(open) => !open && setSlackPanelAlertId(null)}>
+        <SheetContent side="right" className="w-[400px] sm:w-[480px] p-0 flex flex-col">
+          <SheetHeader className="sr-only">
+            <SheetTitle>Slack Thread</SheetTitle>
+          </SheetHeader>
+          {slackPanelAlertId && (
+            <SlackMessagesPanel
+              alertId={slackPanelAlertId}
+              onClose={() => setSlackPanelAlertId(null)}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

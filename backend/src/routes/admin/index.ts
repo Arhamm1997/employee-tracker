@@ -14,6 +14,7 @@ import ticketsRoutes from "./tickets.routes";
 import agentVersionsRoutes from "./agent-versions.routes";
 import invoicesRoutes from "./invoices.routes";
 import paymentSettingsRoutes from "./payment-settings.routes";
+import slackAdminRoutes from "./slack.routes";
 import { requireAdmin, AdminRequest } from "../../middleware/adminAuth";
 import prisma from "../../lib/prisma";
 
@@ -39,6 +40,9 @@ router.use("/agent-versions", agentVersionsRoutes);
 // Phase 7 & 8: Billing / Offline Payment
 router.use("/invoices", invoicesRoutes);
 router.use("/payment-settings", paymentSettingsRoutes);
+
+// Slack Integration Management
+router.use("/slack", slackAdminRoutes);
 
 // ── GET /admin/notifications ──────────────────────────────────────────────────
 router.get("/notifications", requireAdmin, async (_req: AdminRequest, res: Response) => {

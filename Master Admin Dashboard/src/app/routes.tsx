@@ -20,6 +20,7 @@ import AuditLogs from './pages/AuditLogs';
 import AdminUsers from './pages/AdminUsers';
 import AgentVersions from './pages/AgentVersions';
 import PaymentSettings from './pages/PaymentSettings';
+import SlackConfig from './pages/SlackConfig';
 
 export const router = createBrowserRouter([
   {
@@ -200,6 +201,16 @@ export const router = createBrowserRouter([
       <ProtectedRoute>
         <AdminLayout>
           <PaymentSettings />
+        </AdminLayout>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/admin/slack',
+    element: (
+      <ProtectedRoute>
+        <AdminLayout>
+          <SlackConfig />
         </AdminLayout>
       </ProtectedRoute>
     ),

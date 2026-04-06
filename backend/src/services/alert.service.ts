@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma";
 import { broadcast, broadcastAlertCount } from "../lib/websocket";
 import { sendAlertEmail } from "./email.service";
+import { sendAlertToSlack } from "./slack.service";
 import logger from "../lib/logger";
 
 interface CreateAlertOptions {
@@ -35,6 +36,9 @@ export async function createAlert(opts: CreateAlertOptions) {
         alertOnUsb: true,
         alertOnAfterHours: true,
         alertOnNewSoftware: true,
+        slackEnabled: true,
+        slackChannelId: true,
+        slackAlertTypes: true,
       },
     });
 
@@ -94,6 +98,20 @@ export async function createAlert(opts: CreateAlertOptions) {
           }).catch(() => {});
         });
       }
+    }
+
+    // Send to Slack (non-blocking)
+    if (companyId && settings?.slackEnabled && settings?.slackChannelId) {
+      sendAlertToSlack({
+        alertId: alert.id,
+        companyId,
+        alertType: type,
+        employeeName: employee.name,
+        department: employee.department,
+        message,
+        severity,
+        timestamp: alert.timestamp,
+      }).catch((err) => logger.error("Slack alert send error:", err));
     }
 
     return alert;

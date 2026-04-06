@@ -32,6 +32,7 @@ model Company {
   passwordResetTokens     PasswordResetToken[]
   upgradeRequests         PlanUpgradeRequest[]
   supportTickets          SupportTicket[]
+  slackIntegration        SlackIntegration?
 }
 
 // ─── MULTI-TENANCY: Plan ──────────────────────────────────────────────────────
@@ -54,6 +55,7 @@ model Plan {
   shutdownEnabled       Boolean @default(false)
   livescreenEnabled     Boolean @default(false)
   lockEnabled           Boolean @default(false)
+  slackEnabled          Boolean @default(true)
   isActive              Boolean @default(true)
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
@@ -298,16 +300,18 @@ model Screenshot {
 // ─── Alert ────────────────────────────────────────────────────────────────────
 
 model Alert {
-  id         String   @id @default(cuid())
-  employeeId String
-  companyId  String?
-  type       String   // blocked_site | idle_long | new_software | after_hours | usb_connected | clipboard_sensitive | low_activity
-  message    String
-  severity   String   // high | medium | low
-  metadata   Json?
-  isRead     Boolean  @default(false)
-  emailSent  Boolean  @default(false)
-  timestamp  DateTime @default(now())
+  id              String   @id @default(cuid())
+  employeeId      String
+  companyId       String?
+  type            String   // blocked_site | idle_long | new_software | after_hours | usb_connected | clipboard_sensitive | low_activity
+  message         String
+  severity        String   // high | medium | low
+  metadata        Json?
+  isRead          Boolean  @default(false)
+  emailSent       Boolean  @default(false)
+  slackTs         String?  // Slack message timestamp for threading
+  slackThreadTs   String?  // Slack thread root timestamp
+  timestamp       DateTime @default(now())
 
   employee Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   company  Company?  @relation(fields: [companyId], references: [id])
@@ -352,6 +356,13 @@ model Settings {
   keylogEnabled           Boolean  @default(false)
   fileMonitorEnabled      Boolean  @default(false)
   printMonitorEnabled     Boolean  @default(false)
+
+  // ── Slack integration settings ─────────────────────────────────────────────
+  slackEnabled            Boolean  @default(false)
+  slackChannelId          String?  // Slack channel ID for alert notifications
+  slackAlertTypes         String[] // which alert types to post: ["blocked_site","idle_long",...]
+  slackThreadReplies      Boolean  @default(true)
+
   updatedAt               DateTime @updatedAt
 
   company Company? @relation(fields: [companyId], references: [id])
@@ -599,4 +610,45 @@ model PlanUpgradeRequest {
 
   @@index([companyId])
   @@index([status])
+}
+
+// ─── Slack Integration ────────────────────────────────────────────────────────
+
+model SlackIntegration {
+  id             String   @id @default(cuid())
+  companyId      String   @unique
+  teamId         String   // Slack workspace ID (T...)
+  teamName       String
+  botUserId      String
+  botAccessToken String   // AES-256 encrypted
+  isActive       Boolean  @default(true)
+  installedAt    DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  company  Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  messages SlackMessage[]
+
+  @@index([companyId])
+  @@index([teamId])
+}
+
+model SlackMessage {
+  id            String   @id @default(cuid())
+  integrationId String
+  alertId       String?  // linked alert (nullable)
+  channelId     String
+  slackTs       String   // Slack message timestamp (unique within channel)
+  slackThreadTs String?  // thread root ts (for replies)
+  direction     String   // outbound | inbound
+  content       String
+  slackUserId   String?
+  slackUserName String?
+  isRead        Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  integration SlackIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@index([integrationId])
+  @@index([alertId])
+  @@index([slackTs])
 }

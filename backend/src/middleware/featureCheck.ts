@@ -2,9 +2,9 @@ import { Response, NextFunction } from "express";
 import prisma from "../lib/prisma";
 import { AuthRequest } from "./auth.middleware";
 
-type Feature = "screenshots" | "browserHistory" | "usbMonitoring" | "alerts" | "keylog" | "fileActivity" | "printLogs" | "advancedReports";
+type Feature = "screenshots" | "browserHistory" | "usbMonitoring" | "alerts" | "keylog" | "fileActivity" | "printLogs" | "advancedReports" | "slackIntegration";
 
-const featurePlanField: Record<Feature, "screenshotsEnabled" | "browserHistoryEnabled" | "usbMonitoringEnabled" | "alertsEnabled" | "keylogEnabled" | "fileActivityEnabled" | "printLogsEnabled" | "advancedReports"> = {
+const featurePlanField: Record<Feature, "screenshotsEnabled" | "browserHistoryEnabled" | "usbMonitoringEnabled" | "alertsEnabled" | "keylogEnabled" | "fileActivityEnabled" | "printLogsEnabled" | "advancedReports" | "slackEnabled"> = {
   screenshots: "screenshotsEnabled",
   browserHistory: "browserHistoryEnabled",
   usbMonitoring: "usbMonitoringEnabled",
@@ -13,6 +13,7 @@ const featurePlanField: Record<Feature, "screenshotsEnabled" | "browserHistoryEn
   fileActivity: "fileActivityEnabled",
   printLogs: "printLogsEnabled",
   advancedReports: "advancedReports",
+  slackIntegration: "slackEnabled",
 };
 
 const featureMessages: Record<Feature, string> = {
@@ -24,6 +25,7 @@ const featureMessages: Record<Feature, string> = {
   fileActivity: "File activity monitoring is not included in your current plan. Please upgrade.",
   printLogs: "Print log monitoring is not included in your current plan. Please upgrade.",
   advancedReports: "Advanced Reports are not included in your current plan. Please upgrade.",
+  slackIntegration: "Slack integration is not included in your current plan. Please upgrade.",
 };
 
 export function checkFeature(feature: Feature) {

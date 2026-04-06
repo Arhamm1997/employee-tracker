@@ -26,6 +26,7 @@ import {
   CheckCheck,
   TrendingUp,
   LifeBuoy,
+  Slack,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import {
@@ -75,6 +76,7 @@ const navigation = [
   { name: 'Admin Users', href: '/admin/users', icon: Shield },
   { name: 'Agent Versions', href: '/admin/agent-versions', icon: Bot },
   { name: 'Payment Settings', href: '/admin/payment-settings', icon: Settings },
+  { name: 'Slack', href: '/admin/slack', icon: Slack },
 ];
 
 const roleColors = {

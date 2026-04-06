@@ -390,6 +390,75 @@ export const apiGetAgentLatestVersion = async (): Promise<AgentLatestVersion | n
   }
 };
 
+// ─── Slack Integration ────────────────────────────────────────────────────────
+
+export interface SlackIntegration {
+  id: string;
+  teamId: string;
+  teamName: string;
+  botUserId: string;
+  isActive: boolean;
+  installedAt: string;
+}
+
+export interface SlackChannel {
+  id: string;
+  name: string;
+  isPrivate: boolean;
+  isMember: boolean;
+}
+
+export interface SlackMessage {
+  id: string;
+  alertId?: string;
+  channelId: string;
+  slackTs: string;
+  slackThreadTs?: string;
+  direction: "outbound" | "inbound";
+  content: string;
+  slackUserId?: string;
+  slackUserName?: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface SlackSettings {
+  slackEnabled: boolean;
+  slackChannelId: string | null;
+  slackAlertTypes: string[];
+  slackThreadReplies: boolean;
+}
+
+export const apiGetSlackOAuthUrl = () =>
+  get<{ url: string }>("/slack/auth-url");
+
+export const apiGetSlackIntegration = () =>
+  get<{ connected: boolean; integration?: SlackIntegration }>("/slack/integration");
+
+export const apiDisconnectSlack = () =>
+  del<{ success: boolean; message: string }>("/slack/integration");
+
+export const apiGetSlackChannels = () =>
+  get<{ channels: SlackChannel[] }>("/slack/channels");
+
+export const apiGetSlackSettings = () =>
+  get<SlackSettings>("/slack/settings");
+
+export const apiUpdateSlackSettings = (data: Partial<SlackSettings>) =>
+  put<{ success: boolean }>("/slack/settings", data);
+
+export const apiSendSlackTestAlert = (channelId?: string) =>
+  post<{ success: boolean; message: string }>("/slack/test-alert", { channelId });
+
+export const apiSendSlackDirectMessage = (employeeId: string, message: string) =>
+  post<{ success: boolean; slackTs: string }>(`/slack/message/employee/${employeeId}`, { message });
+
+export const apiMarkSlackMessageRead = (messageId: string) =>
+  post<{ success: boolean }>(`/slack/message/read/${messageId}`, {});
+
+export const apiGetAlertSlackMessages = (alertId: string) =>
+  get<{ messages: SlackMessage[] }>(`/slack/alert/${alertId}/messages`);
+
 // ─── Update AppSettings type (local augmentation) ────────────────────────────
 
 export type { BrowserHistoryReport };
