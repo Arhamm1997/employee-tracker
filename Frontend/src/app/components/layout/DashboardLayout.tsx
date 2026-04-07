@@ -1,12 +1,16 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Outlet, useLocation, useNavigate, Link } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
 import { usePlanUpgradeConfetti } from "../../hooks/usePlanUpgradeConfetti";
 import {
   LayoutDashboard, Users, Camera, AlertTriangle, FileText,
   Settings, Shield, Bell, Moon, Sun, LogOut, Menu, ChevronLeft,
-  User as UserIcon, ChevronDown, LifeBuoy
+  ChevronDown, LifeBuoy, Megaphone, Sparkles
 } from "lucide-react";
+import {
+  apiGetChangelog, apiMarkAllChangelogRead,
+  type ChangelogEntry,
+} from "../../lib/api";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Avatar, AvatarFallback } from "../ui/avatar";
@@ -44,12 +48,16 @@ function getPageTitle(pathname: string): string {
   if (pathname === "/dashboard/settings") return "Settings";
   if (pathname === "/dashboard/admins") return "Admin Panel";
   if (pathname === "/dashboard/support") return "Support";
+  if (pathname === "/dashboard/whats-new") return "What's New";
   return "Dashboard";
 }
 
 export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [changelogEntries, setChangelogEntries] = useState<ChangelogEntry[]>([]);
+  const [changelogUnread, setChangelogUnread] = useState(0);
+  const [changelogOpen, setChangelogOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, isAuthenticated, loading } = useAuth();
@@ -57,6 +65,42 @@ export function DashboardLayout() {
   const { unreadAlerts, latestAlerts } = useSocket();
   const { seatInfo } = useSubscription();
   const { upgradedTo, dismissBanner } = usePlanUpgradeConfetti(seatInfo);
+
+  const loadChangelog = useCallback(async () => {
+    try {
+      const res = await apiGetChangelog();
+      setChangelogEntries(res.entries);
+      setChangelogUnread(res.unreadCount);
+    } catch {
+      // silently fail — changelog is non-critical
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadChangelog();
+    }
+  }, [isAuthenticated, loadChangelog]);
+
+  async function handleOpenChangelog() {
+    setChangelogOpen(true);
+    if (changelogUnread > 0) {
+      try {
+        await apiMarkAllChangelogRead();
+        setChangelogEntries(prev => prev.map(e => ({ ...e, isRead: true })));
+        setChangelogUnread(0);
+      } catch {
+        // non-critical
+      }
+    }
+  }
+
+  const TYPE_ICONS: Record<string, string> = {
+    feature: "✨",
+    improvement: "⚡",
+    fix: "🔧",
+    security: "🔒",
+  };
 
   // Redirect to login if not authenticated
   React.useEffect(() => {
@@ -237,6 +281,66 @@ export function DashboardLayout() {
           <div className="flex items-center gap-1.5">
             {/* Connection Status */}
             <ConnectionStatus />
+
+            {/* What's New */}
+            <Popover open={changelogOpen} onOpenChange={setChangelogOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="relative" onClick={handleOpenChangelog}>
+                  <Megaphone className="w-5 h-5" />
+                  {changelogUnread > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 bg-[#6366f1] text-white rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1" style={{ fontSize: "10px" }}>
+                      {changelogUnread}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-96 p-0" sideOffset={8}>
+                <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-[#6366f1]" />
+                    <p className="text-sm font-semibold">What&apos;s New</p>
+                  </div>
+                  {changelogUnread === 0 && (
+                    <span className="text-xs text-muted-foreground">All caught up!</span>
+                  )}
+                </div>
+                <div className="max-h-96 overflow-y-auto divide-y divide-border">
+                  {changelogEntries.length === 0 ? (
+                    <div className="px-4 py-8 text-center">
+                      <Megaphone className="w-8 h-8 text-muted-foreground mx-auto mb-2 opacity-40" />
+                      <p className="text-sm text-muted-foreground">No updates yet</p>
+                    </div>
+                  ) : (
+                    changelogEntries.map(entry => (
+                      <div
+                        key={entry.id}
+                        className={`px-4 py-3 transition-colors ${!entry.isRead ? "bg-[#6366f1]/5" : ""}`}
+                      >
+                        <div className="flex items-start gap-2">
+                          <span className="text-base mt-0.5 shrink-0">
+                            {TYPE_ICONS[entry.type] || "📢"}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <p className="text-sm font-medium leading-tight">{entry.title}</p>
+                              {!entry.isRead && (
+                                <span className="w-1.5 h-1.5 bg-[#6366f1] rounded-full shrink-0" />
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground leading-relaxed">{entry.description}</p>
+                            {entry.publishedAt && (
+                              <p className="text-[10px] text-muted-foreground mt-1">
+                                {new Date(entry.publishedAt).toLocaleDateString()}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
 
             {/* Bell / Notifications Dropdown */}
             <Popover>

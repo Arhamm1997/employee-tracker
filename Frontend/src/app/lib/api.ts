@@ -459,6 +459,29 @@ export const apiMarkSlackMessageRead = (messageId: string) =>
 export const apiGetAlertSlackMessages = (alertId: string) =>
   get<{ messages: SlackMessage[] }>(`/slack/alert/${alertId}/messages`);
 
+// ─── Changelog ────────────────────────────────────────────────────────────────
+
+export interface ChangelogEntry {
+  id: string;
+  title: string;
+  description: string;
+  type: string;
+  planTarget: string;
+  isPublished: boolean;
+  publishedAt: string | null;
+  createdAt: string;
+  isRead: boolean;
+}
+
+export const apiGetChangelog = () =>
+  get<{ entries: ChangelogEntry[]; unreadCount: number }>("/changelog");
+
+export const apiMarkChangelogRead = (id: string) =>
+  post<{ success: boolean }>(`/changelog/${id}/read`, {});
+
+export const apiMarkAllChangelogRead = () =>
+  post<{ success: boolean }>("/changelog/read-all", {});
+
 // ─── Update AppSettings type (local augmentation) ────────────────────────────
 
 export type { BrowserHistoryReport };

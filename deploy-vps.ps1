@@ -57,8 +57,11 @@ function Pull-VPS {
 function Deploy-Backend {
     Write-Step "Deploying Backend (api.monitorhub.live)..."
     SSH "cd /var/www/employee-tracker/backend && npm install --silent"
-    SSH "pm2 restart backend"
-    Write-OK "Backend restarted"
+    SSH "cd /var/www/employee-tracker/backend && npx prisma generate"
+    SSH "cd /var/www/employee-tracker/backend && npm run build"
+    SSH "cd /var/www/employee-tracker/backend && npx prisma db push --accept-data-loss"
+    SSH "pm2 restart stafftrack-backend"
+    Write-OK "Backend built and restarted"
 }
 
 # ── DEPLOY COMPANY PORTAL ──────────────────────────────────

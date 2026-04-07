@@ -19,6 +19,7 @@ import cronRoutes from "./cron.routes";
 import upgradeRequestRoutes from "./upgrade-request.routes";
 import supportTicketRoutes from "./support-ticket.routes";
 import slackRoutes from "./slack.routes";
+import changelogRoutes from "./changelog.routes";
 import { authenticate } from "../middleware/auth.middleware";
 import prisma from "../lib/prisma";
 
@@ -187,5 +188,6 @@ router.use("/cron", cronRoutes);
 router.use("/upgrade-request", upgradeRequestRoutes);
 router.use("/support", supportTicketRoutes);
 router.use("/slack", slackRoutes);
+router.use("/changelog", changelogRoutes);
 
 export default router;

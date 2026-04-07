@@ -15,6 +15,7 @@ import agentVersionsRoutes from "./agent-versions.routes";
 import invoicesRoutes from "./invoices.routes";
 import paymentSettingsRoutes from "./payment-settings.routes";
 import slackAdminRoutes from "./slack.routes";
+import changelogAdminRoutes from "./changelog.routes";
 import { requireAdmin, AdminRequest } from "../../middleware/adminAuth";
 import prisma from "../../lib/prisma";
 
@@ -43,6 +44,9 @@ router.use("/payment-settings", paymentSettingsRoutes);
 
 // Slack Integration Management
 router.use("/slack", slackAdminRoutes);
+
+// Changelog / Feature Notifications
+router.use("/changelog", changelogAdminRoutes);
 
 // ── GET /admin/notifications ──────────────────────────────────────────────────
 router.get("/notifications", requireAdmin, async (_req: AdminRequest, res: Response) => {

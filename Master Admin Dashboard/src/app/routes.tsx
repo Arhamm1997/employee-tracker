@@ -21,6 +21,7 @@ import AdminUsers from './pages/AdminUsers';
 import AgentVersions from './pages/AgentVersions';
 import PaymentSettings from './pages/PaymentSettings';
 import SlackConfig from './pages/SlackConfig';
+import Changelog from './pages/Changelog';
 
 export const router = createBrowserRouter([
   {
@@ -211,6 +212,16 @@ export const router = createBrowserRouter([
       <ProtectedRoute>
         <AdminLayout>
           <SlackConfig />
+        </AdminLayout>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/admin/changelog',
+    element: (
+      <ProtectedRoute>
+        <AdminLayout>
+          <Changelog />
         </AdminLayout>
       </ProtectedRoute>
     ),

@@ -67,7 +67,9 @@ npm run build
 echo "=== Step 6: Rebuilding backend ==="
 cd "$REPO_DIR/backend"
 npm install
+npx prisma generate
 npm run build
+npx prisma db push --accept-data-loss
 
 echo "=== Step 7: Writing fixed nginx config ==="
 cat > /etc/nginx/sites-available/employee-tracker << 'NGINXEOF'

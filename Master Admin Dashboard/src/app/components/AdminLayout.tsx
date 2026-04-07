@@ -27,6 +27,7 @@ import {
   TrendingUp,
   LifeBuoy,
   Slack,
+  Megaphone,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import {
@@ -77,6 +78,7 @@ const navigation = [
   { name: 'Agent Versions', href: '/admin/agent-versions', icon: Bot },
   { name: 'Payment Settings', href: '/admin/payment-settings', icon: Settings },
   { name: 'Slack', href: '/admin/slack', icon: Slack },
+  { name: 'Changelog', href: '/admin/changelog', icon: Megaphone },
 ];
 
 const roleColors = {
