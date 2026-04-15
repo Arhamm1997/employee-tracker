@@ -23,7 +23,7 @@ export function SlackOAuthModal({ open, onClose }: SlackOAuthModalProps) {
     setLoading(true);
     try {
       const { url } = await apiGetSlackOAuthUrl();
-      window.location.href = url;
+      window.open(url, "_blank", "noopener,noreferrer");
     } catch {
       toast.error("Failed to get Slack authorization URL. Please try again.");
       setLoading(false);
