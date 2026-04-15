@@ -59,22 +59,16 @@ export function SubscriptionProvider({
       const response = await apiGetSubscriptionInfo();
       const newPlanName = response.subscription?.plan?.name;
 
-      // Detect plan downgrade
-      if (previousPlanName && newPlanName) {
-        const previousTier = getPlanTier(previousPlanName);
-        const currentTier = getPlanTier(newPlanName);
-
-        // If plan was downgraded (tier decreased), logout the user
-        if (currentTier < previousTier) {
-          setSeatInfo(response.subscription);
-          setError(null);
-          setLoading(false);
-          // Give UI a moment to update before logging out
-          setTimeout(() => {
-            logout();
-          }, 500);
-          return;
-        }
+      // Detect any plan change (upgrade or downgrade) → force re-login
+      if (previousPlanName && newPlanName && previousPlanName !== newPlanName) {
+        setSeatInfo(response.subscription);
+        setError(null);
+        setLoading(false);
+        // Give UI a moment to update before logging out
+        setTimeout(() => {
+          logout();
+        }, 1500);
+        return;
       }
 
       setSeatInfo(response.subscription);

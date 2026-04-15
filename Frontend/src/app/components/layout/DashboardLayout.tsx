@@ -490,10 +490,10 @@ export function DashboardLayout() {
                     <span className="text-3xl select-none">🎉</span>
                     <div className="flex-1">
                       <p className="text-white font-bold text-base leading-tight">
-                        Plan upgrade ho gaya! Welcome to {upgradedTo}!
+                        Plan Upgraded! Welcome to {upgradedTo}!
                       </p>
                       <p className="text-white/80 text-xs mt-0.5">
-                        Aapke naye features ab available hain. Enjoy karo! 🚀
+                        Your new features are now available. Enjoy! 🚀
                       </p>
                     </div>
                     <span className="text-3xl select-none">🎊</span>

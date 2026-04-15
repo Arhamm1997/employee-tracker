@@ -8,7 +8,7 @@ import { Button } from "../components/ui/button";
 import { Label } from "../components/ui/label";
 import { toast } from "sonner";
 
-const API_BASE = (import.meta as { env?: Record<string, string> }).env?.VITE_API_URL || "http://localhost:5000/api";
+const API_BASE = (import.meta as { env?: Record<string, string> }).env?.VITE_API_URL || "/api";
 
 async function apiRegister(data: {
   companyName: string;
@@ -187,9 +187,9 @@ export function SignupPage() {
 
               <p className="text-center text-sm text-muted-foreground">
                 Already have an account?{" "}
-                <a href="https://monitorhub.live/login" className="text-[#6366f1] hover:underline font-medium">
+                <Link to="/login" className="text-[#6366f1] hover:underline font-medium">
                   Sign In
-                </a>
+                </Link>
               </p>
             </form>
           </CardContent>

@@ -56,7 +56,9 @@ async function saveLocally(buffer: Buffer): Promise<string> {
   const filename = `${Date.now()}-${randomUUID().slice(0, 8)}.jpg`;
   const filePath = path.join(SCREENSHOTS_DIR, filename);
   fs.writeFileSync(filePath, buffer);
-  return `/uploads/screenshots/${filename}`;
+  // Use full backend URL so frontend can load it across domains
+  const baseUrl = (process.env.VPS_URL || `http://localhost:${process.env.PORT || 5001}`).replace(/\/api$/, "");
+  return `${baseUrl}/uploads/screenshots/${filename}`;
 }
 
 function getSettingsForAgent(settings: {
