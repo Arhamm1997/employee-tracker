@@ -87,11 +87,11 @@ export function SubscriptionProvider({
     if (!authLoading) {
       void refreshSeatInfo();
       // Set initial plan name after first load
-      setImmediate(() => {
+      setTimeout(() => {
         if (seatInfo?.plan?.name) {
           setPreviousPlanName(seatInfo.plan.name);
         }
-      });
+      }, 0);
     }
   }, [isAuthenticated, authLoading]);
 
