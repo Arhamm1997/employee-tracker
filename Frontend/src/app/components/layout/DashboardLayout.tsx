@@ -33,7 +33,7 @@ const ALL_NAV_ITEMS = [
   { path: "/dashboard/alerts", label: "Alerts", icon: AlertTriangle, hasBadge: true, feature: "alerts" },
   { path: "/dashboard/reports", label: "Reports", icon: FileText, feature: "advanced_reports" },
   { path: "/dashboard/settings", label: "Settings", icon: Settings, feature: null },
-  { path: "/dashboard/settings#slack", label: "Slack", icon: Slack, feature: null },
+  { path: "/dashboard/settings?tab=integrations", label: "Integrations", icon: Slack, feature: null },
   { path: "/dashboard/support", label: "Support", icon: LifeBuoy, feature: null },
 ];
 
