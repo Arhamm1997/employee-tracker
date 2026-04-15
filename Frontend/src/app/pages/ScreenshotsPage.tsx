@@ -32,14 +32,19 @@ export function ScreenshotsPage() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    const load = () => {
+      if (cancelled) return;
+      apiGetScreenshots({ employeeId: employee, department: dept, date })
+        .then(data => { if (!cancelled) { setScreenshots(data); setVisibleCount(v => v); } })
+        .catch(() => {})
+        .finally(() => { if (!cancelled) setLoading(false); });
+    };
     setLoading(true);
-    apiGetScreenshots({ employeeId: employee, department: dept, date })
-      .then(data => {
-        setScreenshots(data);
-        setVisibleCount(20);
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    load();
+    // Auto-refresh every 30s for live updates
+    const interval = setInterval(load, 30000);
+    return () => { cancelled = true; clearInterval(interval); };
   }, [employee, dept, date]);
 
   const visible = screenshots.slice(0, visibleCount);
