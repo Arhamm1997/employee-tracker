@@ -373,11 +373,11 @@ export async function sendExpiryWarningEmail(
   const body = `
     <p style="color:#6b7280;margin-bottom:24px;">
       Hello <strong>${companyName}</strong>,<br><br>
-      Aapki <strong>${planName}</strong> subscription <strong>${dateStr}</strong> ko expire hone wali hai.
-      Uninterrupted service ke liye abhi renew karein.
+      Your <strong>${planName}</strong> subscription will expire on <strong>${dateStr}</strong>.
+      Please renew now to maintain uninterrupted service.
     </p>
     <div class="alert-box medium">
-      ⚠️ Subscription sirf kuch dinon mein expire ho jayegi. Dashboard access band ho jayega.
+      ⚠️ Your subscription will expire in a few days. Dashboard access will be blocked after expiry.
     </div>
     <div style="text-align:center;margin:32px 0;">
       <a href="${renewUrl}" class="btn" style="display:inline-block;background:#f59e0b;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;">
@@ -390,7 +390,7 @@ export async function sendExpiryWarningEmail(
     await transporter.sendMail({
       from: FROM,
       to,
-      subject: `⚠️ Subscription ${dateStr} ko expire hogi — ${COMPANY}`,
+      subject: `⚠️ Subscription Expires on ${dateStr} — ${COMPANY}`,
       html: baseTemplate("Subscription Expiry Warning", body),
     });
     logger.info(`Expiry warning email sent to ${to}`);
@@ -409,10 +409,10 @@ export async function sendExpiryNotificationEmail(
   const body = `
     <p style="color:#6b7280;margin-bottom:24px;">
       Hello <strong>${companyName}</strong>,<br><br>
-      Aapki subscription expire ho gayi hai. Dashboard access band ho gaya hai.
+      Your subscription has expired. Dashboard access has been blocked.
     </p>
     <div class="alert-box">
-      Subscription renew karein aur service resume karein.
+      Please renew your subscription to resume service.
     </div>
     <div style="text-align:center;margin:32px 0;">
       <a href="${renewUrl}" class="btn" style="display:inline-block;background:#ef4444;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;">
@@ -425,7 +425,7 @@ export async function sendExpiryNotificationEmail(
     await transporter.sendMail({
       from: FROM,
       to,
-      subject: `Subscription expire ho gayi — ${COMPANY}`,
+      subject: `Your Subscription Has Expired — ${COMPANY}`,
       html: baseTemplate("Subscription Expired", body),
     });
     logger.info(`Expiry notification email sent to ${to}`);
@@ -458,10 +458,10 @@ export async function sendUpgradeConfirmationEmail(
         <td style="padding:12px 16px;border:1px solid #e5e7eb;color:#10b981;font-weight:600;">${newPlanName}</td>
       </tr>
     </table>
-    <p style="color:#6b7280;">Naye features abhi available hain. Dashboard pe jayen aur use karein.</p>
+    <p style="color:#6b7280;">New features are now available. Go to your dashboard to start using them.</p>
     <div style="text-align:center;margin:32px 0;">
       <a href="${dashboardUrl}" class="btn" style="display:inline-block;background:#10b981;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;">
-        Dashboard Dekhen →
+        View Dashboard →
       </a>
     </div>
   `;
@@ -505,7 +505,7 @@ export async function sendDowngradeConfirmationEmail(
     </table>
     <div style="text-align:center;margin:32px 0;">
       <a href="${dashboardUrl}" class="btn" style="display:inline-block;background:#6366f1;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;">
-        Dashboard Dekhen →
+        View Dashboard →
       </a>
     </div>
   `;
@@ -547,7 +547,7 @@ export async function sendInvoiceCreatedEmail(
   const body = `
     <p style="color:#6b7280;margin-bottom:24px;">
       Hello <strong>${companyName}</strong>,<br><br>
-      Aapka invoice generate ho gaya hai. Niche diye methods se payment karein.
+      Your invoice has been generated. Please make payment using one of the methods below.
     </p>
     <table style="width:100%;border-collapse:collapse;margin:16px 0;">
       <tr style="background:#f9fafb;">
@@ -583,12 +583,12 @@ export async function sendInvoiceCreatedEmail(
     </table>
     ${paymentSettings.whatsappNumber ? `
     <div class="alert-box medium" style="background:#fef3c7;border-color:#f59e0b;">
-      <strong>Payment ke baad:</strong><br>
-      Screenshot aur Invoice ID WhatsApp karein: <strong>${paymentSettings.whatsappNumber}</strong>
+      <strong>After Payment:</strong><br>
+      Please send the payment screenshot and Invoice ID to: <strong>${paymentSettings.whatsappNumber}</strong> on WhatsApp
     </div>` : ""}
     <div style="text-align:center;margin:32px 0;">
       <a href="${invoiceUrl}" class="btn" style="display:inline-block;background:#6366f1;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;">
-        Invoice Dekhen →
+        View Invoice →
       </a>
     </div>
   `;
@@ -617,14 +617,14 @@ export async function sendScreenshotUploadConfirmationEmail(
   const body = `
     <p style="color:#6b7280;margin-bottom:24px;">
       Hello <strong>${companyName}</strong>,<br><br>
-      Aapka payment screenshot receive ho gaya. Hum <strong>24 ghante</strong> mein verify karenge.
+      We have received your payment screenshot. We will verify it within <strong>24 hours</strong>.
     </p>
     <div class="alert-box low">
-      Invoice ID: <strong>${invoiceNumber}</strong> — Verification pending hai.
+      Invoice ID: <strong>${invoiceNumber}</strong> — Verification is pending.
     </div>
     <div style="text-align:center;margin:32px 0;">
       <a href="${invoiceUrl}" class="btn" style="display:inline-block;background:#6366f1;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;">
-        Status Check Karein →
+        Check Status →
       </a>
     </div>
   `;
@@ -633,7 +633,7 @@ export async function sendScreenshotUploadConfirmationEmail(
     await transporter.sendMail({
       from: FROM,
       to,
-      subject: `Payment screenshot receive ho gaya — ${invoiceNumber} | ${COMPANY}`,
+      subject: `Payment Screenshot Received — ${invoiceNumber} | ${COMPANY}`,
       html: baseTemplate("Payment Screenshot Received", body),
     });
     logger.info(`Screenshot upload confirmation email sent to ${to}`);
@@ -659,8 +659,8 @@ export async function sendPaymentApprovedEmail(
 
   const body = `
     <p style="color:#6b7280;margin-bottom:24px;">
-      Mubarak ho, <strong>${companyName}</strong>!<br><br>
-      Aapki payment verify ho gayi. Subscription active ho gaya hai.
+      Congratulations, <strong>${companyName}</strong>!<br><br>
+      Your payment has been verified. Your subscription is now active.
     </p>
     <table style="width:100%;border-collapse:collapse;margin:16px 0;">
       <tr style="background:#f0fdf4;">
@@ -674,7 +674,7 @@ export async function sendPaymentApprovedEmail(
     </table>
     <div style="text-align:center;margin:32px 0;">
       <a href="${dashboardUrl}" class="btn" style="display:inline-block;background:#10b981;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;">
-        Dashboard Kholen →
+        Open Dashboard →
       </a>
     </div>
   `;
@@ -683,7 +683,7 @@ export async function sendPaymentApprovedEmail(
     await transporter.sendMail({
       from: FROM,
       to,
-      subject: `✅ Payment verify ho gayi — Subscription Active | ${COMPANY}`,
+      subject: `✅ Payment Verified — Your Subscription is Active | ${COMPANY}`,
       html: baseTemplate("Payment Verified ✅", body),
     });
     logger.info(`Payment approved email sent to ${to}`);
@@ -703,17 +703,17 @@ export async function sendPaymentRejectedEmail(
   const body = `
     <p style="color:#6b7280;margin-bottom:24px;">
       Hello <strong>${companyName}</strong>,<br><br>
-      Afsos, aapki payment verify nahi ho saki.
+      Unfortunately, we could not verify your payment.
     </p>
     <div class="alert-box">
       <strong>Reason:</strong> ${rejectionReason}
     </div>
     <p style="color:#6b7280;margin-top:16px;">
-      Dobara payment karein aur screenshot bhejein.
+      Please make the payment again and send us the screenshot.
     </p>
     <div style="text-align:center;margin:32px 0;">
       <a href="${invoiceUrl}" class="btn" style="display:inline-block;background:#ef4444;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;">
-        Invoice Dekhen →
+        View Invoice →
       </a>
     </div>
   `;
@@ -722,7 +722,7 @@ export async function sendPaymentRejectedEmail(
     await transporter.sendMail({
       from: FROM,
       to,
-      subject: `❌ Payment verify nahi hui — ${COMPANY}`,
+      subject: `❌ Payment Could Not Be Verified — ${COMPANY}`,
       html: baseTemplate("Payment Rejected ❌", body),
     });
     logger.info(`Payment rejected email sent to ${to}`);

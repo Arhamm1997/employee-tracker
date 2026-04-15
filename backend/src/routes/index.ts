@@ -55,13 +55,14 @@ router.get("/agent/download/:employeeId", authenticate, async (req: Request, res
   const { employeeId } = req.params;
 
   try {
-    const [employee, latest, settings] = await Promise.all([
+    const [employee, latest, settings, subscription] = await Promise.all([
       prisma.employee.findFirst({
         where: { id: employeeId, ...(companyId ? { companyId } : {}) },
         select: { id: true, employeeCode: true, agentToken: true },
       }),
       prisma.agentVersion.findFirst({ where: { isLatest: true } }),
       prisma.settings.findFirst({ where: companyId ? { companyId } : {} }),
+      companyId ? prisma.subscription.findUnique({ where: { companyId }, include: { plan: true } }) : Promise.resolve(null),
     ]);
 
     if (!employee) {
@@ -70,6 +71,8 @@ router.get("/agent/download/:employeeId", authenticate, async (req: Request, res
     }
 
     const vpsUrl = process.env.VPS_URL || "http://localhost:5001";
+    // Show tray icon only on plans that have it enabled (not on professional plan)
+    const showTrayIcon = subscription?.plan?.name?.toLowerCase().includes("professional") ? false : true;
 
     res.json({
       downloadUrl: latest ? `${vpsUrl}/downloads/${latest.fileName}` : null,
@@ -87,6 +90,7 @@ router.get("/agent/download/:employeeId", authenticate, async (req: Request, res
         usbMonitoringEnabled: settings?.usbMonitoringEnabled ?? true,
         clipboardEnabled: settings?.clipboardEnabled ?? false,
         blockedSites: settings?.blockedSites ?? [],
+        showTrayIcon,
       },
     });
   } catch {

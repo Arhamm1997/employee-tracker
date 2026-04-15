@@ -60,7 +60,7 @@ export function BillingPage() {
       setNote("");
       setSelectedPlanId("");
     } catch {
-      alert("Request submit karne mein masla aaya. Dobara koshish karein.");
+      alert("Failed to submit request. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -152,7 +152,7 @@ export function BillingPage() {
             <p className="font-semibold text-sm">
               {isExpired
                 ? "Subscription expire ho gayi — Dashboard access limited hai"
-                : `⚠️ Subscription ${daysLeft} din mein expire ho rahi hai — Renew karein`}
+                : `⚠️ Subscription expires in ${daysLeft} days — Renew now`}
             </p>
             <a
               href={`${PORTAL_URL}/billing`}
@@ -160,7 +160,7 @@ export function BillingPage() {
               rel="noopener noreferrer"
               className="text-xs underline opacity-80 hover:opacity-100"
             >
-              Billing portal mein renew karein →
+              Renew in Billing Portal →
             </a>
           </div>
         </div>
@@ -262,7 +262,7 @@ export function BillingPage() {
                     <button onClick={() => setShowUpgradeModal(false)} className="text-muted-foreground hover:text-foreground text-xl leading-none">✕</button>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Apna desired plan select karein. Admin review karke approve karega.
+                    Select your desired plan. Admin will review and approve the request.
                   </p>
                   <div>
                     <label className="block text-sm font-medium mb-1">Desired Plan</label>
@@ -271,7 +271,7 @@ export function BillingPage() {
                       onChange={e => setSelectedPlanId(e.target.value)}
                       className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary"
                     >
-                      <option value="">-- Plan select karein --</option>
+                      <option value="">-- Select a plan --</option>
                       {plans.map(p => (
                         <option key={p.id} value={p.id}>
                           {p.name} — PKR {p.priceMonthly.toLocaleString()}/month
@@ -321,7 +321,7 @@ export function BillingPage() {
             <div className="bg-muted/40 rounded-lg p-6 text-center">
               <div className="text-3xl mb-2">🧾</div>
               <p className="text-muted-foreground text-sm">
-                Invoices aur payment history billing portal mein available hain.
+                Invoices and payment history are available in the billing portal.
               </p>
               <a href={`${PORTAL_URL}/billing`} target="_blank" rel="noopener noreferrer"
                 className="inline-block mt-3 text-sm text-primary font-semibold hover:underline">

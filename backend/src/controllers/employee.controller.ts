@@ -716,7 +716,7 @@ export async function createEmployee(
         const count = await prisma.employee.count({ where: { companyId, isActive: true } });
         if (count >= subscription.plan.maxSeats) {
           res.status(400).json({
-            message: `Seat limit reach ho gayi (${subscription.plan.maxSeats}), upgrade karein`,
+            message: `Seat limit reached (${subscription.plan.maxSeats} seats). Please upgrade your plan.`,
             code: "EMPLOYEE_SEAT_LIMIT",
           });
           return;

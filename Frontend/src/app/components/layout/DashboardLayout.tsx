@@ -5,7 +5,7 @@ import { usePlanUpgradeConfetti } from "../../hooks/usePlanUpgradeConfetti";
 import {
   LayoutDashboard, Users, Camera, AlertTriangle, FileText,
   Settings, Shield, Bell, Moon, Sun, LogOut, Menu, ChevronLeft,
-  ChevronDown, LifeBuoy, Megaphone, Sparkles
+  ChevronDown, LifeBuoy, Megaphone, Sparkles, Slack
 } from "lucide-react";
 import {
   apiGetChangelog, apiMarkAllChangelogRead,
@@ -33,6 +33,7 @@ const ALL_NAV_ITEMS = [
   { path: "/dashboard/alerts", label: "Alerts", icon: AlertTriangle, hasBadge: true, feature: "alerts" },
   { path: "/dashboard/reports", label: "Reports", icon: FileText, feature: "advanced_reports" },
   { path: "/dashboard/settings", label: "Settings", icon: Settings, feature: null },
+  { path: "/dashboard/settings#slack", label: "Slack", icon: Slack, feature: null },
   { path: "/dashboard/support", label: "Support", icon: LifeBuoy, feature: null },
 ];
 

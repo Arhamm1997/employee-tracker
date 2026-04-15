@@ -58,12 +58,11 @@ def send_heartbeat(cfg: dict, data: dict) -> dict | None:
 def upload_screenshot(cfg: dict, file_path: str, metadata: dict) -> dict | None:
     try:
         with open(file_path, "rb") as f:
+            # Don't set Content-Type header - requests will set it to multipart/form-data automatically
+            headers = {"x-agent-token": cfg.get("agentToken", "")}
             r = _session.post(
                 _url(cfg, "/screenshot"),
-                headers={
-                    "x-agent-token": cfg.get("agentToken", ""),
-                    "Content-Type": None,  # Clear JSON default, let requests set multipart automatically
-                },
+                headers=headers,
                 files={"screenshot": ("screenshot.jpg", f, "image/jpeg")},
                 data=metadata,
                 timeout=30,

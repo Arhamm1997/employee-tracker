@@ -43,7 +43,7 @@ export async function checkEmployeeSeatLimit(
     if (employeeCount >= subscription.plan.maxSeats) {
       return res.status(400).json({
         success: false,
-        error: "Seat limit reach ho gayi, upgrade karein",
+        error: "Seat limit reached. Please upgrade your plan.",
         code: "EMPLOYEE_SEAT_LIMIT",
         upgrade_needed: true,
       });

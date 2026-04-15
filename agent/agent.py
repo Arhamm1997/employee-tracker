@@ -628,9 +628,10 @@ def main():
     # 6. Initialize offline queue DB
     init_db()
 
-    # 7. Start system tray (separate thread)
-    tray_thread = Thread(target=start_tray, daemon=True)
-    tray_thread.start()
+    # 7. Start system tray (separate thread) - only if enabled in config
+    if _config.get("showTrayIcon", True):
+        tray_thread = Thread(target=start_tray, daemon=True)
+        tray_thread.start()
 
     # 8. Start idle detection listeners
     start_idle_listeners()

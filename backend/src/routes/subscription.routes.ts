@@ -232,7 +232,7 @@ router.post("/downgrade", async (req: CompanyRequest, res: Response) => {
     if (newPlan.maxSeats !== -1 && employeeCount > newPlan.maxSeats) {
       const excess = employeeCount - newPlan.maxSeats;
       res.status(400).json({
-        message: `Downgrade nahi ho sakta. Pehle ${excess} employee${excess > 1 ? "s" : ""} remove karein (current: ${employeeCount}, new plan limit: ${newPlan.maxSeats})`,
+        message: `Cannot downgrade plan. Please remove ${excess} employee${excess > 1 ? "s" : ""} first (current: ${employeeCount}, new plan limit: ${newPlan.maxSeats}).`,
       });
       return;
     }

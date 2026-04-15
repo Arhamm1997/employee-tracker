@@ -187,9 +187,9 @@ export function SignupPage() {
 
               <p className="text-center text-sm text-muted-foreground">
                 Already have an account?{" "}
-                <Link to="/login" className="text-[#6366f1] hover:underline font-medium">
-                  Sign in
-                </Link>
+                <a href="https://monitorhub.live/login" className="text-[#6366f1] hover:underline font-medium">
+                  Sign In
+                </a>
               </p>
             </form>
           </CardContent>

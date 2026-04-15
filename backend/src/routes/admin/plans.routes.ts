@@ -134,7 +134,7 @@ router.delete("/:id", async (req: AdminRequest, res: Response) => {
     if (count > 0) {
       return res.status(400).json({
         success: false,
-        error: `${count} compan${count === 1 ? "y" : "ies"} is plan pe hain, pehle migrate karein`,
+        error: `Cannot delete plan. ${count} compan${count === 1 ? "y" : "ies"} ${count === 1 ? "is" : "are"} using this plan. Please migrate them first.`,
       });
     }
 

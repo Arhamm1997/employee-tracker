@@ -19,6 +19,22 @@ const SubscriptionContext = createContext<SubscriptionContextType | undefined>(
   undefined,
 );
 
+// Plan hierarchy for downgrade detection (lower number = lower tier)
+const PLAN_HIERARCHY: Record<string, number> = {
+  "free": 0,
+  "professional": 1,
+  "enterprise": 2,
+};
+
+function getPlanTier(planName: string | undefined): number {
+  if (!planName) return 0;
+  const lower = planName.toLowerCase();
+  for (const [key, tier] of Object.entries(PLAN_HIERARCHY)) {
+    if (lower.includes(key)) return tier;
+  }
+  return 0;
+}
+
 export function SubscriptionProvider({
   children,
 }: {
@@ -27,7 +43,8 @@ export function SubscriptionProvider({
   const [seatInfo, setSeatInfo] = useState<SeatInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const [previousPlanName, setPreviousPlanName] = useState<string | null>(null);
+  const { isAuthenticated, loading: authLoading, logout } = useAuth();
 
   const refreshSeatInfo = async () => {
     if (!isAuthenticated) {
@@ -40,7 +57,28 @@ export function SubscriptionProvider({
     try {
       setLoading(true);
       const response = await apiGetSubscriptionInfo();
+      const newPlanName = response.subscription?.plan?.name;
+
+      // Detect plan downgrade
+      if (previousPlanName && newPlanName) {
+        const previousTier = getPlanTier(previousPlanName);
+        const currentTier = getPlanTier(newPlanName);
+
+        // If plan was downgraded (tier decreased), logout the user
+        if (currentTier < previousTier) {
+          setSeatInfo(response.subscription);
+          setError(null);
+          setLoading(false);
+          // Give UI a moment to update before logging out
+          setTimeout(() => {
+            logout();
+          }, 500);
+          return;
+        }
+      }
+
       setSeatInfo(response.subscription);
+      setPreviousPlanName(newPlanName || null);
       setError(null);
     } catch (err) {
       const message =
@@ -54,6 +92,12 @@ export function SubscriptionProvider({
   useEffect(() => {
     if (!authLoading) {
       void refreshSeatInfo();
+      // Set initial plan name after first load
+      setImmediate(() => {
+        if (seatInfo?.plan?.name) {
+          setPreviousPlanName(seatInfo.plan.name);
+        }
+      });
     }
   }, [isAuthenticated, authLoading]);
 

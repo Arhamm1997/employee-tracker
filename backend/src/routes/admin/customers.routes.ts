@@ -153,7 +153,8 @@ router.post("/", async (req: AdminRequest, res: Response) => {
     });
 
     // Send welcome email (fire and forget)
-    sendWelcomeEmail(email, companyName, tempPassword).catch((e) =>
+    const portalUrl = process.env.COMPANY_PORTAL_URL || "http://localhost:3001";
+    sendWelcomeEmail(email, companyName, `${portalUrl}/select-plan`).catch((e) =>
       logger.warn("Welcome email failed", { e })
     );
 
@@ -464,7 +465,15 @@ router.post("/:id/suspend", async (req: AdminRequest, res: Response) => {
       return res.status(404).json({ success: false, error: "Company not found" });
     }
 
-    await prisma.subscription.updateMany({
+    const subscription = await prisma.subscription.findUnique({
+      where: { companyId: req.params.id },
+    });
+
+    if (!subscription) {
+      return res.status(404).json({ success: false, error: "Subscription not found" });
+    }
+
+    await prisma.subscription.update({
       where: { companyId: req.params.id },
       data: { status: "SUSPENDED" },
     });
@@ -484,7 +493,15 @@ router.post("/:id/activate", async (req: AdminRequest, res: Response) => {
       return res.status(404).json({ success: false, error: "Company not found" });
     }
 
-    await prisma.subscription.updateMany({
+    const subscription = await prisma.subscription.findUnique({
+      where: { companyId: req.params.id },
+    });
+
+    if (!subscription) {
+      return res.status(404).json({ success: false, error: "Subscription not found" });
+    }
+
+    await prisma.subscription.update({
       where: { companyId: req.params.id },
       data: { status: "ACTIVE" },
     });
