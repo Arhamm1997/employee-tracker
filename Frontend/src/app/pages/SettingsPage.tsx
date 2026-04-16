@@ -92,6 +92,13 @@ export function SettingsPage() {
   const isSuperAdmin = user?.role === "super_admin";
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") || "schedule");
+
+  // Sync tab when URL query param changes (e.g. clicking sidebar Integrations link)
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab) setActiveTab(tab);
+  }, [searchParams]);
   const { seatInfo } = useSubscription();
   // Use the same feature key resolution as hasFeature() in subscription-context
   const planFeatures = (seatInfo?.plan?.features ?? (seatInfo as any)?.features ?? {}) as Record<string, boolean | undefined>;
@@ -426,7 +433,7 @@ export function SettingsPage() {
         </div>
       )}
 
-      <Tabs defaultValue={searchParams.get("tab") === "integrations" ? "integrations" : "schedule"}>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full justify-start flex-wrap h-auto gap-1 mb-4">
           <TabsTrigger value="schedule" className="gap-1.5"><Clock className="w-3.5 h-3.5" />Work Schedule</TabsTrigger>
           <TabsTrigger value="monitoring" className="gap-1.5"><Camera className="w-3.5 h-3.5" />Monitoring</TabsTrigger>

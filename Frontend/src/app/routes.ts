@@ -20,6 +20,8 @@ import { SignupPage } from "./pages/SignupPage";
 import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 import { PaymentPage } from "./pages/PaymentPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import { MessagesPage } from "./pages/MessagesPage";
+import { ConversationPage } from "./pages/ConversationPage";
 import { withFeatureGate } from "./components/layout/FeatureGate";
 
 // Feature-gated page wrappers (defined at module level for stable component refs)
@@ -64,6 +66,8 @@ export const router = createBrowserRouter([
           { path: "dashboard/alerts", Component: AlertsGated },
           { path: "dashboard/reports", Component: ReportsGated },
           { path: "dashboard/settings", Component: SettingsPage },
+          { path: "dashboard/messages", Component: MessagesPage },
+          { path: "dashboard/messages/:conversationId", Component: ConversationPage },
           { path: "dashboard/admins", Component: AdminsPage },
           { path: "dashboard/billing", Component: BillingPage },
           { path: "dashboard/support", Component: SupportPage },

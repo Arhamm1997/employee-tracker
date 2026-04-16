@@ -100,7 +100,7 @@ export async function getEmployees(
     const { search, department, status, page = "1", limit = "100" } = req.query as Record<string, string>;
     const companyId = req.admin?.companyId;
 
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { isActive: true };
     if (companyId) where.companyId = companyId;
     if (search) {
       where.OR = [

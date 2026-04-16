@@ -34,6 +34,7 @@ model Company {
   supportTickets          SupportTicket[]
   slackIntegration        SlackIntegration?
   changelogReads          ChangelogRead[]
+  conversations           Conversation[]
 }
 
 // ─── MULTI-TENANCY: Plan ──────────────────────────────────────────────────────
@@ -684,3 +685,44 @@ model ChangelogRead {
   @@unique([changelogId, companyId])
   @@index([companyId])
 }
+
+// ─── Messaging ────────────────────────────────────────────────────────────────
+
+model Conversation {
+  id           String    @id @default(cuid())
+  companyId    String
+  adminId      String
+  employeeId   String
+  lastMessage  String?
+  lastSentAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  messages  Message[]
+
+  @@unique([adminId, employeeId])
+  @@index([companyId])
+  @@index([adminId])
+  @@index([employeeId])
+}
+
+model Message {
+  id             String    @id @default(cuid())
+  conversationId String
+  senderRole     String    // "admin" | "employee"
+  senderId       String    // adminId or employeeId
+  senderName     String
+  content        String
+  isRead         Boolean   @default(false)
+  readAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([senderId])
+}
+
+// Add relation back-references to Company
+// (added inline so Company model picks up Conversation relation)

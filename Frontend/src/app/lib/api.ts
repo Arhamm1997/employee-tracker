@@ -482,6 +482,67 @@ export const apiMarkChangelogRead = (id: string) =>
 export const apiMarkAllChangelogRead = () =>
   post<{ success: boolean }>("/changelog/read-all", {});
 
+// ─── Messages ─────────────────────────────────────────────────────────────────
+
+export interface ConversationMessage {
+  id: string;
+  conversationId: string;
+  senderRole: "admin" | "employee";
+  senderId: string;
+  senderName: string;
+  content: string;
+  isRead: boolean;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface ConversationEmployee {
+  id: string;
+  name: string;
+  email: string;
+  department: string;
+  avatar: string | null;
+  lastSeenAt: string | null;
+}
+
+export interface Conversation {
+  id: string;
+  employee: ConversationEmployee | null;
+  lastMessage: string | null;
+  lastSentAt: string | null;
+  unreadCount: number;
+  createdAt: string;
+}
+
+export interface ConversationDetail {
+  conversation: {
+    id: string;
+    employee: ConversationEmployee | null;
+    lastMessage: string | null;
+    lastSentAt: string | null;
+    createdAt: string;
+  };
+  messages: ConversationMessage[];
+  total: number;
+  page: number;
+  pages: number;
+}
+
+export const apiGetConversations = (q?: string) =>
+  get<Conversation[]>(`/messages/conversations${q ? `?q=${encodeURIComponent(q)}` : ""}`);
+
+export const apiGetConversation = (conversationId: string, page = 1) =>
+  get<ConversationDetail>(`/messages/${conversationId}?page=${page}`);
+
+export const apiSendMessage = (employeeId: string, content: string) =>
+  post<{ message: ConversationMessage; conversation: { id: string } }>("/messages", { employeeId, content });
+
+export const apiReplyMessage = (conversationId: string, content: string) =>
+  post<ConversationMessage>(`/messages/${conversationId}/reply`, { content });
+
+export const apiMarkConversationRead = (conversationId: string) =>
+  put<{ ok: boolean }>(`/messages/${conversationId}/read`);
+
 // ─── Update AppSettings type (local augmentation) ────────────────────────────
 
 export type { BrowserHistoryReport };

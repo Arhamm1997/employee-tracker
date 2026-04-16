@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
+import { toast } from "sonner";
 import type { SeatInfo } from "../types/subscription";
 import { apiGetSubscriptionInfo } from "./api";
 import { useAuth } from "./auth-types";
@@ -64,10 +65,14 @@ export function SubscriptionProvider({
         setSeatInfo(response.subscription);
         setError(null);
         setLoading(false);
-        // Give UI a moment to update before logging out
+        toast.info(
+          `Your subscription plan has changed to "${newPlanName}". Please log in again to continue.`,
+          { duration: 4000 }
+        );
+        // Give the toast a moment to show before logging out
         setTimeout(() => {
           logout();
-        }, 1500);
+        }, 2000);
         return;
       }
 
@@ -86,12 +91,6 @@ export function SubscriptionProvider({
   useEffect(() => {
     if (!authLoading) {
       void refreshSeatInfo();
-      // Set initial plan name after first load
-      setTimeout(() => {
-        if (seatInfo?.plan?.name) {
-          setPreviousPlanName(seatInfo.plan.name);
-        }
-      }, 0);
     }
   }, [isAuthenticated, authLoading]);
 

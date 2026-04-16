@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Outlet, useLocation, useNavigate, Link } from "react-router";
+import { Outlet, useLocation, useNavigate, useSearchParams, Link } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
 import { usePlanUpgradeConfetti } from "../../hooks/usePlanUpgradeConfetti";
 import {
   LayoutDashboard, Users, Camera, AlertTriangle, FileText,
   Settings, Shield, Bell, Moon, Sun, LogOut, Menu, ChevronLeft,
-  ChevronDown, LifeBuoy, Megaphone, Sparkles, Slack
+  ChevronDown, LifeBuoy, Megaphone, Sparkles, Slack, MessageSquare
 } from "lucide-react";
 import {
   apiGetChangelog, apiMarkAllChangelogRead,
@@ -32,6 +32,7 @@ const ALL_NAV_ITEMS = [
   { path: "/dashboard/screenshots", label: "Screenshots", icon: Camera, feature: "screenshots" },
   { path: "/dashboard/alerts", label: "Alerts", icon: AlertTriangle, hasBadge: true, feature: "alerts" },
   { path: "/dashboard/reports", label: "Reports", icon: FileText, feature: "advanced_reports" },
+  { path: "/dashboard/messages", label: "Messages", icon: MessageSquare, hasBadge: true, badgeKey: "messages" as const, feature: null },
   { path: "/dashboard/settings", label: "Settings", icon: Settings, feature: null },
   { path: "/dashboard/settings?tab=integrations", label: "Integrations", icon: Slack, feature: null },
   { path: "/dashboard/support", label: "Support", icon: LifeBuoy, feature: null },
@@ -61,9 +62,10 @@ export function DashboardLayout() {
   const [changelogOpen, setChangelogOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, logout, isAuthenticated, loading } = useAuth();
   const { isDark, toggle } = useTheme();
-  const { unreadAlerts, latestAlerts } = useSocket();
+  const { unreadAlerts, latestAlerts, unreadMessages } = useSocket();
   const { seatInfo } = useSubscription();
   const { upgradedTo, dismissBanner } = usePlanUpgradeConfetti(seatInfo);
 
@@ -171,9 +173,15 @@ export function DashboardLayout() {
       {/* Navigation */}
       <nav className={`flex-1 py-4 space-y-1 overflow-y-auto ${expanded ? "px-3" : "px-2"}`}>
         {allNavItems.map(item => {
+          // Parse the item path — may include a query string (e.g. ?tab=integrations)
+          const [itemPathname, itemQuery] = item.path.split("?");
+          const itemSearchParam = itemQuery ? new URLSearchParams(itemQuery) : null;
           const isActive = item.path === "/dashboard"
             ? location.pathname === "/dashboard"
-            : location.pathname.startsWith(item.path);
+            : itemSearchParam
+              // Items with a query string: match pathname AND the specific query param
+              ? location.pathname === itemPathname && searchParams.get(itemSearchParam.keys().next().value) === itemSearchParam.values().next().value
+              : location.pathname.startsWith(itemPathname);
           return (
             <TooltipProvider key={item.path} delayDuration={0}>
               <Tooltip>
@@ -191,17 +199,20 @@ export function DashboardLayout() {
                   >
                     <item.icon className="w-5 h-5 shrink-0" />
                     {expanded && <span style={{ fontSize: "14px" }}>{item.label}</span>}
-                    {item.hasBadge && unreadAlerts > 0 && (
-                      expanded ? (
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 bg-[#ef4444] text-white rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5" style={{ fontSize: "11px" }}>
-                          {unreadAlerts}
+                    {item.hasBadge && (() => {
+                      const count = (item as { badgeKey?: string }).badgeKey === "messages" ? unreadMessages : unreadAlerts;
+                      if (count <= 0) return null;
+                      const color = (item as { badgeKey?: string }).badgeKey === "messages" ? "bg-[#6366f1]" : "bg-[#ef4444]";
+                      return expanded ? (
+                        <span className={`absolute right-2 top-1/2 -translate-y-1/2 ${color} text-white rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5`} style={{ fontSize: "11px" }}>
+                          {count}
                         </span>
                       ) : (
-                        <span className="absolute -top-1 -right-1 bg-[#ef4444] text-white rounded-full w-4 h-4 flex items-center justify-center" style={{ fontSize: "9px" }}>
-                          {unreadAlerts > 9 ? "9+" : unreadAlerts}
+                        <span className={`absolute -top-1 -right-1 ${color} text-white rounded-full w-4 h-4 flex items-center justify-center`} style={{ fontSize: "9px" }}>
+                          {count > 9 ? "9+" : count}
                         </span>
-                      )
-                    )}
+                      );
+                    })()}
                   </Link>
                 </TooltipTrigger>
                 {!sidebarOpen && !mobile && (

@@ -13,6 +13,8 @@ export interface ConnectionStatus {
 interface SocketContextType {
   unreadAlerts: number;
   setUnreadAlerts: React.Dispatch<React.SetStateAction<number>>;
+  unreadMessages: number;
+  setUnreadMessages: React.Dispatch<React.SetStateAction<number>>;
   latestActivities: Activity[];
   latestAlerts: Alert[];
   setLatestAlerts: React.Dispatch<React.SetStateAction<Alert[]>>;
@@ -35,6 +37,8 @@ const defaultConnectionStatus: ConnectionStatus = {
 const SocketContext = createContext<SocketContextType>({
   unreadAlerts: 0,
   setUnreadAlerts: () => {},
+  unreadMessages: 0,
+  setUnreadMessages: () => {},
   latestActivities: [],
   latestAlerts: [],
   setLatestAlerts: () => {},
@@ -52,6 +56,7 @@ const BASE_WS_URL = import.meta.env.VITE_API_URL
 
 export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [unreadAlerts, setUnreadAlerts] = useState(0);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const [latestActivities, setLatestActivities] = useState<Activity[]>([]);
   const [latestAlerts, setLatestAlerts] = useState<Alert[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>(defaultConnectionStatus);
@@ -178,6 +183,9 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
               setUnreadAlerts(msg.data as number);
             } else if (msg.type === "new-alert") {
               setLatestAlerts(prev => [msg.data as Alert, ...prev.slice(0, 9)]);
+            } else if (msg.type === "new_message") {
+              // Increment unread messages badge (the ConversationPage handles deducting via markRead)
+              setUnreadMessages(prev => prev + 1);
             }
 
             // ── Dynamic subscribers (WebRTC, live-frame, etc.) ───────────
@@ -236,6 +244,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   return (
     <SocketContext.Provider value={{
       unreadAlerts, setUnreadAlerts,
+      unreadMessages, setUnreadMessages,
       latestActivities,
       latestAlerts, setLatestAlerts,
       connectionStatus,

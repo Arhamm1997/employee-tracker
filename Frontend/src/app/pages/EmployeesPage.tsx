@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router";
+import { toast } from "sonner";
 import { motion } from "motion/react";
 import { Search, Download, ChevronLeft, ChevronRight, Users, ArrowUpDown, UserPlus, Copy, Check, Trash2, AlertTriangle, Bot } from "lucide-react";
 import { Card, CardContent } from "../components/ui/card";
@@ -96,10 +97,17 @@ export function EmployeesPage() {
     ? (seatInfo.employee_seats.limit === -1 ? null : seatInfo.employee_seats.limit)
     : null;
 
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
   useEffect(() => {
+    setFetchError(null);
     apiGetEmployees()
-      .then(setEmployees)
-      .catch(console.error)
+      .then(data => { setEmployees(data); })
+      .catch((err: Error) => {
+        const msg = err.message || "Failed to load employees";
+        setFetchError(msg);
+        toast.error(msg);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -243,6 +251,21 @@ export function EmployeesPage() {
           <Skeleton className="h-10 w-32" />
         </div>
         <Skeleton className="h-96 rounded-lg" />
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[300px] gap-4">
+        <AlertTriangle className="w-10 h-10 text-[#ef4444]" />
+        <div className="text-center">
+          <p className="font-semibold text-lg">Could not load employees</p>
+          <p className="text-muted-foreground text-sm mt-1">{fetchError}</p>
+        </div>
+        <Button onClick={() => { setLoading(true); setFetchError(null); apiGetEmployees().then(setEmployees).catch((err: Error) => { setFetchError(err.message); toast.error(err.message); }).finally(() => setLoading(false)); }}>
+          Retry
+        </Button>
       </div>
     );
   }
