@@ -261,6 +261,16 @@ export function LoginPage() {
                       ? "Backend Offline — Cannot Login"
                       : "Sign In"}
                   </Button>
+
+                  <p className="text-center text-sm text-muted-foreground pt-1">
+                    Don't have an account?{" "}
+                    <Link
+                      to="/signup"
+                      className="text-[#6366f1] hover:underline font-medium"
+                    >
+                      Sign Up
+                    </Link>
+                  </p>
                 </motion.form>
               ) : (
                 /* ── Step 2: 2FA Code ───────────────────────────────────── */

@@ -50,6 +50,7 @@ export function SubscriptionProvider({
   const refreshSeatInfo = async () => {
     if (!isAuthenticated) {
       setSeatInfo(null);
+      setPreviousPlanName(null); // Reset on logout so next login doesn't falsely detect a change
       setError(null);
       setLoading(false);
       return;
