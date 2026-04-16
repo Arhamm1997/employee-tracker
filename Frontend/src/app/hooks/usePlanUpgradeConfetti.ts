@@ -1,8 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import confetti from "canvas-confetti";
 import type { SeatInfo } from "../types/subscription";
 
+// Stores the last known plan name (persists across remounts/navigations)
 const STORAGE_KEY = "monitor_last_plan_name";
+// Stores which plan the upgrade banner has already been shown for (prevents repeat)
+const BANNER_SHOWN_KEY = "monitor_upgrade_banner_shown_for";
 
 function getPlanName(seatInfo: SeatInfo | null): string | null {
   if (!seatInfo) return null;
@@ -12,38 +15,36 @@ function getPlanName(seatInfo: SeatInfo | null): string | null {
 }
 
 export function usePlanUpgradeConfetti(seatInfo: SeatInfo | null) {
-  const initialized = useRef(false);
   const [upgradedTo, setUpgradedTo] = useState<string | null>(null);
 
   useEffect(() => {
     const currentPlan = getPlanName(seatInfo);
     if (!currentPlan) return;
 
-    const previousPlan = localStorage.getItem(STORAGE_KEY);
+    const storedPlan = localStorage.getItem(STORAGE_KEY);
 
-    if (!initialized.current) {
-      initialized.current = true;
-      // First load — just store, don't fire
-      if (previousPlan === null) {
-        localStorage.setItem(STORAGE_KEY, currentPlan);
-      } else if (previousPlan !== currentPlan) {
-        // Plan changed since last visit — still fire
-        fireConfetti();
-        setUpgradedTo(currentPlan);
-        localStorage.setItem(STORAGE_KEY, currentPlan);
-      }
+    // First ever visit — just record the plan, no banner
+    if (storedPlan === null) {
+      localStorage.setItem(STORAGE_KEY, currentPlan);
       return;
     }
 
-    // Subsequent updates within the same session
-    if (previousPlan !== null && previousPlan !== currentPlan) {
-      fireConfetti();
-      setUpgradedTo(currentPlan);
+    // Plan changed since last stored value
+    if (storedPlan !== currentPlan) {
+      // Update stored plan immediately so remounts don't re-trigger
       localStorage.setItem(STORAGE_KEY, currentPlan);
-    } else {
-      localStorage.setItem(STORAGE_KEY, currentPlan);
+
+      // Only show the banner once per plan transition
+      // (bannerShownFor tracks which destination plan we already announced)
+      const bannerShownFor = localStorage.getItem(BANNER_SHOWN_KEY);
+      if (bannerShownFor !== currentPlan) {
+        localStorage.setItem(BANNER_SHOWN_KEY, currentPlan);
+        setUpgradedTo(currentPlan);
+        fireConfetti();
+      }
     }
-  }, [getPlanName(seatInfo)]);
+    // Same plan → nothing to do
+  }, [getPlanName(seatInfo)]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const dismissBanner = () => setUpgradedTo(null);
 
