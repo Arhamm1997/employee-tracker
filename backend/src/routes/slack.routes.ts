@@ -13,6 +13,8 @@ import {
   markMessageRead,
   getAlertSlackMessages,
   handleWebhook,
+  getSlackConversations,
+  getSlackEmployeeMessages,
 } from "../controllers/slack.controller";
 
 const router = Router();
@@ -75,6 +77,15 @@ router.post("/message/read/:messageId", (req, res, next) => {
 // Alert Slack messages
 router.get("/alert/:alertId/messages", (req, res, next) => {
   getAlertSlackMessages(req, res, next);
+});
+
+// Slack DM conversations (for Messages page)
+router.get("/conversations", (req, res, next) => {
+  getSlackConversations(req, res, next);
+});
+
+router.get("/conversations/:employeeId", (req, res, next) => {
+  getSlackEmployeeMessages(req, res, next);
 });
 
 export default router;

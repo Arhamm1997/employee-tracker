@@ -638,6 +638,7 @@ model SlackMessage {
   id            String   @id @default(cuid())
   integrationId String
   alertId       String?  // linked alert (nullable)
+  employeeId    String?  // linked employee for DMs (nullable — null for channel alerts)
   channelId     String
   slackTs       String   // Slack message timestamp (unique within channel)
   slackThreadTs String?  // thread root ts (for replies)
@@ -652,6 +653,7 @@ model SlackMessage {
 
   @@index([integrationId])
   @@index([alertId])
+  @@index([employeeId])
   @@index([slackTs])
 }
 

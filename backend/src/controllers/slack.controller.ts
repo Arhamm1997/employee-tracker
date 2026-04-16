@@ -207,6 +207,7 @@ export async function sendDirectMessage(req: AuthRequest, res: Response, next: N
     const result = await slackService.sendDirectMessageToEmployee({
       companyId,
       employeeEmail: employee.email,
+      employeeId,
       message: message.trim(),
     });
 
@@ -399,3 +400,152 @@ export async function adminGetPlansSlackStatus(_req: Request, res: Response, nex
     next(err);
   }
 }
+
+// ─── Company: Get all Slack DM conversations (per employee) ───────────────────
+// Returns list of employees who have Slack DM history, with last message + unread count
+
+export async function getSlackConversations(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const companyId = req.admin!.companyId!;
+    const { q } = req.query as Record<string, string>;
+
+    const integration = await prisma.slackIntegration.findUnique({
+      where: { companyId },
+      select: { id: true, isActive: true },
+    });
+
+    if (!integration || !integration.isActive) {
+      res.json({ connected: false, conversations: [] });
+      return;
+    }
+
+    // Get all DM messages grouped by employeeId (only messages that have an employeeId)
+    const grouped = await prisma.slackMessage.groupBy({
+      by: ["employeeId"],
+      where: {
+        integrationId: integration.id,
+        employeeId: { not: null },
+      },
+      _max: { createdAt: true },
+      _count: { id: true },
+      orderBy: { _max: { createdAt: "desc" } },
+    });
+
+    if (grouped.length === 0) {
+      res.json({ connected: true, conversations: [] });
+      return;
+    }
+
+    // Fetch employee details
+    const employeeIds = grouped.map(g => g.employeeId!).filter(Boolean);
+    const employees = await prisma.employee.findMany({
+      where: { id: { in: employeeIds }, companyId },
+      select: { id: true, name: true, email: true, department: true, avatar: true, lastSeenAt: true },
+    });
+    const empMap = new Map(employees.map(e => [e.id, e]));
+
+    // Fetch last message + unread count per employee
+    const results = await Promise.all(
+      grouped
+        .filter(g => empMap.has(g.employeeId!))
+        .map(async g => {
+          const emp = empMap.get(g.employeeId!)!;
+
+          // Apply search filter
+          if (q) {
+            const search = q.toLowerCase();
+            if (!emp.name.toLowerCase().includes(search) && !emp.email.toLowerCase().includes(search)) {
+              return null;
+            }
+          }
+
+          const [lastMsg, unreadCount] = await Promise.all([
+            prisma.slackMessage.findFirst({
+              where: { integrationId: integration.id, employeeId: g.employeeId! },
+              orderBy: { createdAt: "desc" },
+              select: { content: true, direction: true, createdAt: true },
+            }),
+            prisma.slackMessage.count({
+              where: { integrationId: integration.id, employeeId: g.employeeId!, direction: "inbound", isRead: false },
+            }),
+          ]);
+
+          return {
+            employee: emp,
+            lastMessage: lastMsg?.content ?? null,
+            lastMessageDirection: lastMsg?.direction ?? null,
+            lastSentAt: lastMsg?.createdAt ?? null,
+            unreadCount,
+            totalMessages: g._count.id,
+          };
+        })
+    );
+
+    const filtered = results.filter(Boolean);
+    res.json({ connected: true, conversations: filtered });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ─── Company: Get Slack DM messages with a specific employee ──────────────────
+
+export async function getSlackEmployeeMessages(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const companyId = req.admin!.companyId!;
+    const { employeeId } = req.params;
+    const { page = "1" } = req.query as Record<string, string>;
+    const PAGE_SIZE = 50;
+    const pageNum = Math.max(1, Number(page));
+
+    const integration = await prisma.slackIntegration.findUnique({
+      where: { companyId },
+      select: { id: true, isActive: true },
+    });
+
+    if (!integration || !integration.isActive) {
+      res.status(400).json({ message: "Slack not connected" });
+      return;
+    }
+
+    const employee = await prisma.employee.findFirst({
+      where: { id: employeeId, companyId },
+      select: { id: true, name: true, email: true, department: true, avatar: true, lastSeenAt: true },
+    });
+    if (!employee) {
+      res.status(404).json({ message: "Employee not found" });
+      return;
+    }
+
+    const [messages, total] = await Promise.all([
+      prisma.slackMessage.findMany({
+        where: { integrationId: integration.id, employeeId },
+        orderBy: { createdAt: "desc" },
+        take: PAGE_SIZE,
+        skip: (pageNum - 1) * PAGE_SIZE,
+        select: {
+          id: true, direction: true, content: true, slackUserId: true,
+          slackUserName: true, isRead: true, createdAt: true,
+        },
+      }),
+      prisma.slackMessage.count({ where: { integrationId: integration.id, employeeId } }),
+    ]);
+
+    // Mark all inbound messages as read
+    await prisma.slackMessage.updateMany({
+      where: { integrationId: integration.id, employeeId, direction: "inbound", isRead: false },
+      data: { isRead: true },
+    });
+
+    res.json({
+      employee,
+      messages: messages.reverse(), // chronological
+      total,
+      page: pageNum,
+      pages: Math.ceil(total / PAGE_SIZE),
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+

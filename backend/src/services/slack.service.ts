@@ -328,6 +328,17 @@ export async function handleIncomingSlackMessage(opts: {
       alertId = parentMsg?.alertId ?? undefined;
     }
 
+    // Try to link to an employee by matching slackUserId from previous outbound DMs
+    let linkedEmployeeId: string | undefined;
+    if (!alertId) {
+      const prev = await prisma.slackMessage.findFirst({
+        where: { integrationId: integration.id, slackUserId: opts.slackUserId, employeeId: { not: null } },
+        select: { employeeId: true },
+        orderBy: { createdAt: "desc" },
+      });
+      linkedEmployeeId = prev?.employeeId ?? undefined;
+    }
+
     const slackMsg = await prisma.slackMessage.create({
       data: {
         integrationId: integration.id,
@@ -340,6 +351,7 @@ export async function handleIncomingSlackMessage(opts: {
         slackUserId: opts.slackUserId,
         slackUserName: opts.slackUserName,
         isRead: false,
+        ...(linkedEmployeeId ? { employeeId: linkedEmployeeId } : {}),
       },
     });
 
@@ -367,6 +379,7 @@ export async function handleIncomingSlackMessage(opts: {
 export async function sendDirectMessageToEmployee(opts: {
   companyId: string;
   employeeEmail: string;
+  employeeId?: string;
   message: string;
 }): Promise<{ slackTs: string; slackUserId: string }> {
   const integration = await getActiveIntegration(opts.companyId);
@@ -407,6 +420,7 @@ export async function sendDirectMessageToEmployee(opts: {
       direction: "outbound",
       content: opts.message,
       slackUserId,
+      ...(opts.employeeId ? { employeeId: opts.employeeId } : {}),
     },
   });
 

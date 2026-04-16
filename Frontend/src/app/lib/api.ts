@@ -459,6 +459,52 @@ export const apiMarkSlackMessageRead = (messageId: string) =>
 export const apiGetAlertSlackMessages = (alertId: string) =>
   get<{ messages: SlackMessage[] }>(`/slack/alert/${alertId}/messages`);
 
+// ─── Slack Conversations (Messages page) ─────────────────────────────────────
+
+export interface SlackConversationEmployee {
+  id: string;
+  name: string;
+  email: string;
+  department: string;
+  avatar: string | null;
+  lastSeenAt: string | null;
+}
+
+export interface SlackConversation {
+  employee: SlackConversationEmployee;
+  lastMessage: string | null;
+  lastMessageDirection: "outbound" | "inbound" | null;
+  lastSentAt: string | null;
+  unreadCount: number;
+  totalMessages: number;
+}
+
+export interface SlackDmMessage {
+  id: string;
+  direction: "outbound" | "inbound";
+  content: string;
+  slackUserId: string | null;
+  slackUserName: string | null;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface SlackEmployeeMessages {
+  employee: SlackConversationEmployee;
+  messages: SlackDmMessage[];
+  total: number;
+  page: number;
+  pages: number;
+}
+
+export const apiGetSlackConversations = (q?: string) =>
+  get<{ connected: boolean; conversations: SlackConversation[] }>(
+    `/slack/conversations${q ? `?q=${encodeURIComponent(q)}` : ""}`
+  );
+
+export const apiGetSlackEmployeeMessages = (employeeId: string, page = 1) =>
+  get<SlackEmployeeMessages>(`/slack/conversations/${employeeId}?page=${page}`);
+
 // ─── Changelog ────────────────────────────────────────────────────────────────
 
 export interface ChangelogEntry {
