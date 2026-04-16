@@ -218,6 +218,19 @@ initWebSocket(server);
 async function bootstrap() {
   verifyEmailConfig().catch(() => {});
 
+  // ── Slack integration preflight check ─────────────────────────────────────
+  if (process.env.SLACK_CLIENT_ID) {
+    const slackKey = process.env.SLACK_ENCRYPTION_KEY || process.env.ENCRYPTION_KEY;
+    if (!slackKey) {
+      logger.error(
+        "SLACK_ENCRYPTION_KEY is not set — Slack OAuth will fail when saving tokens. " +
+        "Generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
+      );
+    } else if (Buffer.from(slackKey, "hex").length !== 32) {
+      logger.error("SLACK_ENCRYPTION_KEY must be exactly 32 bytes (64 hex chars) — Slack OAuth will fail.");
+    }
+  }
+
   cron.schedule("*/4 * * * *", async () => {
     try {
       await prisma.$queryRaw`SELECT 1`;

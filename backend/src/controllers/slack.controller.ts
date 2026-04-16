@@ -57,7 +57,7 @@ export async function getIntegrationStatus(req: AuthRequest, res: Response, next
     });
 
     if (!integration || !integration.isActive) {
-      res.status(404).json({ connected: false });
+      res.json({ connected: false });
       return;
     }
 

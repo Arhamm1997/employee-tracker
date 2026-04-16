@@ -5,7 +5,7 @@ import {
   ArrowLeft, Mail, Building, Hash, Clock, Camera, TrendingUp,
   AlertTriangle, Usb, Globe, ChevronLeft, ChevronRight, Upload,
   Wifi, WifiOff, Lock, Power, Monitor, Keyboard, FolderOpen, Printer, ExternalLink,
-  Maximize, Minimize
+  Maximize, Minimize, Slack, Send, Loader2
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
@@ -23,6 +23,7 @@ import {
 import {
   apiGetEmployeeDetail, apiUploadAvatar, apiSendRemoteCommand,
   apiGetConnectionHistory, apiGetKeylogHistory, apiGetFileActivity, apiGetPrintLogs,
+  apiSendSlackDirectMessage,
   type EmployeeDetailData,
 } from "../lib/api";
 import type { ConnectionEvent, KeylogEntry, FileActivityEntry, PrintLogEntry } from "../lib/types";
@@ -67,6 +68,9 @@ export function EmployeeDetailPage() {
   const [printLogs, setPrintLogs] = useState<PrintLogEntry[]>([]);
   const [remoteCommandDialog, setRemoteCommandDialog] = useState<"lock" | "shutdown" | null>(null);
   const [sendingCommand, setSendingCommand] = useState(false);
+  const [slackMessageDialog, setSlackMessageDialog] = useState(false);
+  const [slackMessage, setSlackMessage] = useState("");
+  const [sendingSlackMessage, setSendingSlackMessage] = useState(false);
 
   // ─── Live screen WebRTC state ─────────────────────────────────────────────
   const [liveScreenOpen, setLiveScreenOpen] = useState(false);
@@ -283,6 +287,21 @@ export function EmployeeDetailPage() {
     }
   };
 
+  const handleSendSlackMessage = async () => {
+    if (!id || !slackMessage.trim()) return;
+    setSendingSlackMessage(true);
+    try {
+      await apiSendSlackDirectMessage(id, slackMessage);
+      toast.success("Message sent to Slack!");
+      setSlackMessageDialog(false);
+      setSlackMessage("");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send message");
+    } finally {
+      setSendingSlackMessage(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -443,6 +462,15 @@ export function EmployeeDetailPage() {
                     Shutdown
                   </Button>
                 )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 text-[#4A154B] border-[#4A154B] hover:bg-purple-50"
+                  onClick={() => setSlackMessageDialog(true)}
+                >
+                  <Slack className="w-4 h-4" />
+                  Send Slack Message
+                </Button>
               </div>
             )}
           </div>
@@ -1066,6 +1094,53 @@ export function EmployeeDetailPage() {
               disabled={sendingCommand}
             >
               {sendingCommand ? "Sending..." : `Send ${remoteCommandDialog === "lock" ? "Lock" : "Shutdown"} Command`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Slack Message Dialog */}
+      <Dialog open={slackMessageDialog} onOpenChange={setSlackMessageDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-[#4A154B]">
+              <Slack className="w-5 h-5" />
+              Send Slack Message to {data?.employee?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Send a direct message to {data?.employee?.name} via Slack. They'll receive it as a DM from the Employee Monitor bot.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <textarea
+              placeholder="Type your message here..."
+              value={slackMessage}
+              onChange={(e) => setSlackMessage(e.target.value)}
+              className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#4A154B] resize-none"
+              rows={4}
+              disabled={sendingSlackMessage}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSlackMessageDialog(false)} disabled={sendingSlackMessage}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSendSlackMessage}
+              disabled={sendingSlackMessage || !slackMessage.trim()}
+              className="bg-[#4A154B] hover:bg-[#3d0f3d] gap-2"
+            >
+              {sendingSlackMessage ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  Send Message
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
