@@ -465,7 +465,7 @@ export function EmployeeDetailPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="gap-1.5 text-[#4A154B] border-[#4A154B] hover:bg-purple-50"
+                  className="gap-1.5 bg-[#4A154B] text-white border-[#4A154B] hover:bg-[#6A254B]"
                   onClick={() => setSlackMessageDialog(true)}
                   title="Send Slack message"
                 >
