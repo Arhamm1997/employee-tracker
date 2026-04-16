@@ -5,7 +5,7 @@ import {
   ArrowLeft, Mail, Building, Hash, Clock, Camera, TrendingUp,
   AlertTriangle, Usb, Globe, ChevronLeft, ChevronRight, Upload,
   Wifi, WifiOff, Lock, Power, Monitor, Keyboard, FolderOpen, Printer, ExternalLink,
-  Maximize, Minimize, Slack, Send, Loader2, MessageSquare
+  Maximize, Minimize, Slack, Send, Loader2
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
@@ -23,7 +23,7 @@ import {
 import {
   apiGetEmployeeDetail, apiUploadAvatar, apiSendRemoteCommand,
   apiGetConnectionHistory, apiGetKeylogHistory, apiGetFileActivity, apiGetPrintLogs,
-  apiSendSlackDirectMessage, apiSendMessage,
+  apiSendSlackDirectMessage,
   type EmployeeDetailData,
 } from "../lib/api";
 import type { ConnectionEvent, KeylogEntry, FileActivityEntry, PrintLogEntry } from "../lib/types";
@@ -72,10 +72,6 @@ export function EmployeeDetailPage() {
   const [slackMessage, setSlackMessage] = useState("");
   const [sendingSlackMessage, setSendingSlackMessage] = useState(false);
 
-  // In-app message dialog
-  const [inAppMsgDialog, setInAppMsgDialog] = useState(false);
-  const [inAppMsg, setInAppMsg] = useState("");
-  const [sendingInAppMsg, setSendingInAppMsg] = useState(false);
 
   // ─── Live screen WebRTC state ─────────────────────────────────────────────
   const [liveScreenOpen, setLiveScreenOpen] = useState(false);
@@ -307,21 +303,6 @@ export function EmployeeDetailPage() {
     }
   };
 
-  const handleSendInAppMessage = async () => {
-    if (!id || !inAppMsg.trim()) return;
-    setSendingInAppMsg(true);
-    try {
-      const result = await apiSendMessage(id, inAppMsg.trim());
-      toast.success("Message sent!");
-      setInAppMsgDialog(false);
-      setInAppMsg("");
-      navigate(`/dashboard/messages/${result.conversation.id}`);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to send message");
-    } finally {
-      setSendingInAppMsg(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -486,22 +467,12 @@ export function EmployeeDetailPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="gap-1.5"
-                  onClick={() => setInAppMsgDialog(true)}
-                  title="Send in-app message"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  Message
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
                   className="gap-1.5 bg-[#4A154B] text-white border-[#4A154B] hover:bg-[#6A254B]"
                   onClick={() => setSlackMessageDialog(true)}
-                  title="Send Slack message"
+                  title="Send Slack DM"
                 >
                   <Slack className="w-4 h-4" />
-                  Slack
+                  Message
                 </Button>
               </div>
             )}
@@ -1178,46 +1149,6 @@ export function EmployeeDetailPage() {
         </DialogContent>
       </Dialog>
 
-      {/* In-App Message Dialog */}
-      <Dialog open={inAppMsgDialog} onOpenChange={setInAppMsgDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-[#6366f1]" />
-              Message {data?.employee?.name}
-            </DialogTitle>
-            <DialogDescription>
-              Send an in-app message to {data?.employee?.name}. You can view the full conversation in the Messages section.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <textarea
-              placeholder="Type your message here..."
-              value={inAppMsg}
-              onChange={e => setInAppMsg(e.target.value)}
-              className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#6366f1] resize-none bg-background text-foreground"
-              rows={4}
-              disabled={sendingInAppMsg}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setInAppMsgDialog(false)} disabled={sendingInAppMsg}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSendInAppMessage}
-              disabled={sendingInAppMsg || !inAppMsg.trim()}
-              className="bg-[#6366f1] hover:bg-[#5558e6] gap-2"
-            >
-              {sendingInAppMsg ? (
-                <><Loader2 className="w-4 h-4 animate-spin" />Sending...</>
-              ) : (
-                <><Send className="w-4 h-4" />Send Message</>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
