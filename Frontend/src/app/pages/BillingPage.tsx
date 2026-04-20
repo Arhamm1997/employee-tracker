@@ -4,7 +4,7 @@ import { useSubscription } from "../lib/subscription-context";
 
 const PORTAL_URL =
   (import.meta as { env?: Record<string, string> }).env?.VITE_PORTAL_URL ||
-  "http://localhost:3001";
+  "https://monitorhub.live";
 
 const BASE_URL = (import.meta as { env?: Record<string, string> }).env?.VITE_API_URL || "/api";
 

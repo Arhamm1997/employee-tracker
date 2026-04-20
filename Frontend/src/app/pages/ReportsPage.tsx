@@ -26,14 +26,16 @@ const datePresets = [
   { label: "This Month", value: "month" },
 ];
 
-function fmt12(isoString: string): string {
+function fmt12(isoString: string | null | undefined): string {
+  if (!isoString) return "—";
   try {
     const d = new Date(isoString);
+    if (isNaN(d.getTime())) return "—";
     const day = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
     const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
     return `${day}, ${time}`;
   } catch {
-    return isoString;
+    return "—";
   }
 }
 

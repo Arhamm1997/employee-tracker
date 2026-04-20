@@ -18,7 +18,13 @@ import { Label } from '../components/ui/label';
 import { CardSkeleton, TableSkeleton } from '../components/LoadingSkeleton';
 import { ArrowLeft, Users, CreditCard, Monitor, FileText, AlertCircle, BanIcon, CheckCircle, Trash2, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
+
+function safeFormat(value: string | null | undefined, fmt: string): string {
+  if (!value) return "—";
+  const d = new Date(value);
+  return isValid(d) ? format(d, fmt) : "—";
+}
 
 const changePlanSchema = z.object({
   planId: z.string().min(1, 'Plan is required'),
@@ -401,8 +407,8 @@ export default function CustomerDetail() {
                   <div>
                     <p className="text-sm text-gray-600">Current Period</p>
                     <p className="font-medium mt-1">
-                      {format(new Date(subscription.currentPeriodStart), 'dd MMM yyyy')} -{' '}
-                      {format(new Date(subscription.currentPeriodEnd), 'dd MMM yyyy')}
+                      {safeFormat(subscription.currentPeriodStart, 'dd MMM yyyy')} -{' '}
+                      {safeFormat(subscription.currentPeriodEnd, 'dd MMM yyyy')}
                     </p>
                   </div>
                   <div>
@@ -594,7 +600,7 @@ export default function CustomerDetail() {
                           </Badge>
                         </td>
                         <td className="py-3 px-4 text-sm">
-                          {format(new Date(agent.lastSeen), 'dd MMM yyyy HH:mm')}
+                          {safeFormat(agent.lastSeen, 'dd MMM yyyy HH:mm')}
                         </td>
                         <td className="py-3 px-4 text-sm font-mono">{agent.ipAddress}</td>
                         <td className="py-3 px-4 text-sm">{agent.version}</td>
@@ -639,10 +645,10 @@ export default function CustomerDetail() {
                           </Badge>
                         </td>
                         <td className="py-3 px-4 text-sm">
-                          {format(new Date(invoice.dueDate), 'dd MMM yyyy')}
+                          {safeFormat(invoice.dueDate, 'dd MMM yyyy')}
                         </td>
                         <td className="py-3 px-4 text-sm">
-                          {invoice.paidAt ? format(new Date(invoice.paidAt), 'dd MMM yyyy HH:mm') : '-'}
+                          {invoice.paidAt ? safeFormat(invoice.paidAt, 'dd MMM yyyy HH:mm') : '-'}
                         </td>
                       </tr>
                     ))}
@@ -672,7 +678,7 @@ export default function CustomerDetail() {
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-sm font-medium">{log.source}</span>
                           <span className="text-sm text-gray-500">
-                            {format(new Date(log.timestamp), 'dd MMM yyyy HH:mm')}
+                            {safeFormat(log.timestamp, 'dd MMM yyyy HH:mm')}
                           </span>
                         </div>
                         <p className="text-sm text-gray-900 mb-2">{log.message}</p>
