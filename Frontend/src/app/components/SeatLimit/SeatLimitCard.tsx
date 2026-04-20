@@ -1,8 +1,10 @@
 import React from "react";
+import { useNavigate } from "react-router";
 import { useSubscription } from "../../lib/subscription-context";
 
 export function SeatLimitCard() {
   const { seatInfo, loading } = useSubscription();
+  const navigate = useNavigate();
 
   if (loading) {
     return <div className="p-4">Loading subscription...</div>;
@@ -78,14 +80,15 @@ export function SeatLimitCard() {
         </div>
       )}
 
-      {/* Upgrade Button */}
-      {adminSeats &&
-        employeeSeats &&
-        (adminSeats.percentage > 80 || employeeSeats.percentage > 80) && (
-          <button className="w-full bg-primary text-primary-foreground py-2 rounded font-medium hover:bg-primary/90">
-            Upgrade Plan
-          </button>
-        )}
+      {/* Upgrade Button — always show for non-enterprise plans */}
+      {!String(planName).toLowerCase().includes("enterprise") && (
+        <button
+          onClick={() => navigate("/dashboard/billing")}
+          className="w-full bg-primary text-primary-foreground py-2 rounded font-medium hover:bg-primary/90 transition-colors"
+        >
+          Upgrade Plan
+        </button>
+      )}
 
       {/* Trial Info */}
       {(seatInfo as any).is_trial && (

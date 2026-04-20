@@ -31,7 +31,7 @@ const ALL_NAV_ITEMS = [
   { path: "/dashboard/employees", label: "Employees", icon: Users, feature: null },
   { path: "/dashboard/screenshots", label: "Screenshots", icon: Camera, feature: "screenshots" },
   { path: "/dashboard/alerts", label: "Alerts", icon: AlertTriangle, hasBadge: true, feature: "alerts" },
-  { path: "/dashboard/reports", label: "Reports", icon: FileText, feature: "advanced_reports" },
+  { path: "/dashboard/reports", label: "Reports", icon: FileText, feature: null },
   { path: "/dashboard/messages", label: "Messages", icon: MessageSquare, hasBadge: true, badgeKey: "messages" as const, feature: null },
   { path: "/dashboard/settings", label: "Settings", icon: Settings, feature: null },
   { path: "/dashboard/settings?tab=integrations", label: "Integrations", icon: Slack, feature: null },

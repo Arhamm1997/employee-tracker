@@ -22,13 +22,13 @@ import { PaymentPage } from "./pages/PaymentPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { MessagesPage } from "./pages/MessagesPage";
 import { ConversationPage } from "./pages/ConversationPage";
-import { withFeatureGate } from "./components/layout/FeatureGate";
+import { withFeatureGate, withFeatureGateUpgrade } from "./components/layout/FeatureGate";
 
 // Feature-gated page wrappers (defined at module level for stable component refs)
 // Keys must match what /api/subscription/info returns in plan.features
 const ScreenshotsGated = withFeatureGate("screenshots", ScreenshotsPage);
 const AlertsGated = withFeatureGate("alerts", AlertsPage);
-const ReportsGated = withFeatureGate("advanced_reports", ReportsPage);
+const ReportsGated = withFeatureGateUpgrade("advanced_reports", ReportsPage, "Advanced Reports", "Get detailed productivity reports, PDF/CSV exports, and per-employee analytics.");
 const LiveScreenGated = withFeatureGate("live_screen", LiveScreenPage);
 
 const PORTAL_URL = (import.meta as { env?: Record<string, string> }).env?.VITE_PORTAL_URL || "http://localhost:3001";
