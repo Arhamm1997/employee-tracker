@@ -116,8 +116,9 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       // FIX 1: Mark as checking before the request
       setConnectionStatus(prev => ({ ...prev, backendChecking: true }));
       try {
-        const statusUrl = BASE_URL.replace(/\/api$/, "") + "/api/connection-status";
-        const res = await fetch(statusUrl, { signal: AbortSignal.timeout(5000) });
+        // Use same-origin relative URL so no CORS preflight is needed.
+        // Both monitorhub.live and app.monitorhub.live proxy /api/ to the backend.
+        const res = await fetch("/api/connection-status", { signal: AbortSignal.timeout(5000) });
         if (res.ok) {
           const data = await res.json();
           setConnectionStatus(prev => ({
