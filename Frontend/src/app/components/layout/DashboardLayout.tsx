@@ -479,6 +479,39 @@ export function DashboardLayout() {
           </div>
         </header>
 
+        {/* Plan Upgrade Banner — outside the page-keyed motion.div so it doesn't re-animate on navigation */}
+        <AnimatePresence>
+          {upgradedTo && (
+            <motion.div
+              initial={{ opacity: 0, y: -60 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -60 }}
+              transition={{ type: "spring", damping: 20, stiffness: 200 }}
+              className="mx-4 mt-4 rounded-xl overflow-hidden shrink-0"
+            >
+              <div className="relative bg-gradient-to-r from-[#6366f1] via-[#8b5cf6] to-[#ec4899] p-4 flex items-center gap-3 shadow-lg">
+                <span className="text-3xl select-none">🎉</span>
+                <div className="flex-1">
+                  <p className="text-white font-bold text-base leading-tight">
+                    Plan Upgraded! Welcome to {upgradedTo}!
+                  </p>
+                  <p className="text-white/80 text-xs mt-0.5">
+                    Your new features are now available. Enjoy! 🚀
+                  </p>
+                </div>
+                <span className="text-3xl select-none">🎊</span>
+                <button
+                  onClick={dismissBanner}
+                  className="ml-2 text-white/70 hover:text-white transition-colors text-xl leading-none"
+                  aria-label="Dismiss"
+                >
+                  ✕
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Page Content */}
         <main className="flex-1 overflow-auto p-4 lg:p-6">
           <motion.div
@@ -487,39 +520,6 @@ export function DashboardLayout() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2 }}
           >
-            {/* Plan Upgrade Banner */}
-            <AnimatePresence>
-              {upgradedTo && (
-                <motion.div
-                  initial={{ opacity: 0, y: -60 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -60 }}
-                  transition={{ type: "spring", damping: 20, stiffness: 200 }}
-                  className="mx-4 mt-4 mb-0 rounded-xl overflow-hidden"
-                >
-                  <div className="relative bg-gradient-to-r from-[#6366f1] via-[#8b5cf6] to-[#ec4899] p-4 flex items-center gap-3 shadow-lg">
-                    <span className="text-3xl select-none">🎉</span>
-                    <div className="flex-1">
-                      <p className="text-white font-bold text-base leading-tight">
-                        Plan Upgraded! Welcome to {upgradedTo}!
-                      </p>
-                      <p className="text-white/80 text-xs mt-0.5">
-                        Your new features are now available. Enjoy! 🚀
-                      </p>
-                    </div>
-                    <span className="text-3xl select-none">🎊</span>
-                    <button
-                      onClick={dismissBanner}
-                      className="ml-2 text-white/70 hover:text-white transition-colors text-xl leading-none"
-                      aria-label="Dismiss"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
             <Outlet />
           </motion.div>
         </main>

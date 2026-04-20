@@ -64,6 +64,7 @@ export function SubscriptionProvider({
       // Detect any plan change (upgrade or downgrade) → force re-login
       if (previousPlanName && newPlanName && previousPlanName !== newPlanName) {
         setSeatInfo(response.subscription);
+        setPreviousPlanName(newPlanName); // update immediately so repeat polls don't re-trigger
         setError(null);
         setLoading(false);
         toast.info(

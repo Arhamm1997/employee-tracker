@@ -138,7 +138,11 @@ export async function adminDeleteChangelog(req: AdminRequest, res: Response, nex
 
 export async function getChangelog(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const companyId = req.admin!.companyId!;
+    const companyId = req.admin?.companyId;
+    if (!companyId) {
+      res.json({ entries: [], unreadCount: 0 });
+      return;
+    }
 
     // Get company's plan target to filter entries
     const subscription = await prisma.subscription.findUnique({
