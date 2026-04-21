@@ -67,7 +67,7 @@ export const router = createBrowserRouter([
           { path: "dashboard/reports", Component: ReportsGated },
           { path: "dashboard/settings", Component: SettingsPage },
           { path: "dashboard/messages", Component: MessagesPage },
-          { path: "dashboard/messages/:conversationId", Component: ConversationPage },
+          { path: "dashboard/messages/:conversationId", Component: MessagesPage },
           { path: "dashboard/admins", Component: AdminsPage },
           { path: "dashboard/billing", Component: BillingPage },
           { path: "dashboard/support", Component: SupportPage },

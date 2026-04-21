@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router";
 import { useSubscription } from "../../lib/subscription-context";
 
-export function SeatLimitCard() {
+export function SeatLimitCard({ onUpgrade }: { onUpgrade?: () => void } = {}) {
   const { seatInfo, loading } = useSubscription();
   const navigate = useNavigate();
 
@@ -83,7 +83,7 @@ export function SeatLimitCard() {
       {/* Upgrade Button — always show for non-enterprise plans */}
       {!String(planName).toLowerCase().includes("enterprise") && (
         <button
-          onClick={() => navigate("/dashboard/billing")}
+          onClick={() => onUpgrade ? onUpgrade() : navigate("/dashboard/billing")}
           className="w-full bg-primary text-primary-foreground py-2 rounded font-medium hover:bg-primary/90 transition-colors"
         >
           Upgrade Plan

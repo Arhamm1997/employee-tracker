@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router";
 import { SeatLimitCard } from "../components/SeatLimit";
 import { useSubscription } from "../lib/subscription-context";
-
-const PORTAL_URL =
-  (import.meta as { env?: Record<string, string> }).env?.VITE_PORTAL_URL ||
-  "https://monitorhub.live";
 
 const BASE_URL = (import.meta as { env?: Record<string, string> }).env?.VITE_API_URL || "/api";
 
@@ -17,7 +14,7 @@ interface PendingRequest { id: string; requestedPlan: { name: string }; createdA
 
 export function BillingPage() {
   const { seatInfo, loading, error } = useSubscription();
-  const [_portalOpened, setPortalOpened] = useState(false);
+  const navigate = useNavigate();
 
   // Upgrade request state
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -29,7 +26,6 @@ export function BillingPage() {
   const [requestSuccess, setRequestSuccess] = useState(false);
 
   useEffect(() => {
-    // Fetch available plans
     fetch(`${BASE_URL}/plans`, { headers: { Authorization: `Bearer ${getToken()}` } })
       .then(r => r.json())
       .then((data: { plans?: PlanOption[] } | PlanOption[]) => {
@@ -38,7 +34,6 @@ export function BillingPage() {
       })
       .catch(() => {});
 
-    // Fetch pending upgrade request
     fetch(`${BASE_URL}/upgrade-request/status`, { headers: { Authorization: `Bearer ${getToken()}` } })
       .then(r => r.json())
       .then((data: { pending?: PendingRequest | null }) => setPendingRequest(data.pending ?? null))
@@ -91,9 +86,7 @@ export function BillingPage() {
   if (error) {
     return (
       <div className="max-w-6xl mx-auto p-6">
-        <div className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">
-          {error}
-        </div>
+        <div className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">{error}</div>
       </div>
     );
   }
@@ -129,18 +122,15 @@ export function BillingPage() {
             Current plan, seat usage, and payment management.
           </p>
         </div>
-        <a
-          href={`${PORTAL_URL}/billing`}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={() => setPortalOpened(true)}
-          className="text-sm bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium hover:bg-primary/90 transition-colors"
+        <button
+          onClick={() => navigate("/dashboard/support")}
+          className="text-sm bg-muted text-foreground px-4 py-2 rounded-lg font-medium hover:bg-muted/80 transition-colors border border-border"
         >
-          Manage Billing →
-        </a>
+          Contact Support
+        </button>
       </div>
 
-      {/* ── Expiry warning ──────────────────────────────────────────────────── */}
+      {/* Expiry warning */}
       {(isExpiringSoon || isExpired) && (
         <div className={`rounded-lg p-4 border flex items-center gap-3 ${
           isExpired
@@ -154,14 +144,12 @@ export function BillingPage() {
                 ? "Subscription expired — Dashboard access is limited"
                 : `⚠️ Subscription expires in ${daysLeft} days — Renew now`}
             </p>
-            <a
-              href={`${PORTAL_URL}/billing`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs underline opacity-80 hover:opacity-100"
+            <button
+              onClick={() => setShowUpgradeModal(true)}
+              className="text-xs underline opacity-80 hover:opacity-100 text-left"
             >
-              Renew in Billing Portal →
-            </a>
+              Request plan renewal / upgrade →
+            </button>
           </div>
         </div>
       )}
@@ -169,7 +157,7 @@ export function BillingPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
 
-          {/* ── Current Plan card ─────────────────────────────────────────── */}
+          {/* Current Plan card */}
           <div className="bg-card border border-border rounded-xl p-6">
             <div className="flex items-start justify-between mb-4">
               <h2 className="text-xl font-bold">Current Plan</h2>
@@ -240,18 +228,12 @@ export function BillingPage() {
               </div>
             )}
 
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowUpgradeModal(true)}
-                className="flex-1 bg-primary text-primary-foreground text-center py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors"
-              >
-                🚀 Upgrade Plan Request
-              </button>
-              <a href={`${PORTAL_URL}/billing`} target="_blank" rel="noopener noreferrer"
-                className="flex-1 bg-muted text-foreground text-center py-2.5 rounded-lg text-sm font-semibold hover:bg-muted/80 transition-colors">
-                Manage Billing
-              </a>
-            </div>
+            <button
+              onClick={() => setShowUpgradeModal(true)}
+              className="w-full bg-primary text-primary-foreground text-center py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors"
+            >
+              🚀 Upgrade Plan Request
+            </button>
 
             {/* Upgrade Request Modal */}
             {showUpgradeModal && (
@@ -269,9 +251,12 @@ export function BillingPage() {
                     <select
                       value={selectedPlanId}
                       onChange={e => setSelectedPlanId(e.target.value)}
-                      className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     >
                       <option value="">-- Select a plan --</option>
+                      {plans.length === 0 && (
+                        <option disabled>No plans available — contact support</option>
+                      )}
                       {plans.map(p => (
                         <option key={p.id} value={p.id}>
                           {p.name} — PKR {p.priceMonthly.toLocaleString()}/month
@@ -286,7 +271,7 @@ export function BillingPage() {
                       onChange={e => setNote(e.target.value)}
                       placeholder="Leave a message for the admin (optional)..."
                       rows={3}
-                      className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                      className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                     />
                   </div>
                   <div className="flex gap-3 pt-2">
@@ -309,31 +294,27 @@ export function BillingPage() {
             )}
           </div>
 
-          {/* ── Payment history ──────────────────────────────────────────── */}
+          {/* Payment History */}
           <div className="bg-card border border-border rounded-xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-semibold">Payment History</h3>
-              <a href={`${PORTAL_URL}/billing`} target="_blank" rel="noopener noreferrer"
-                className="text-xs text-primary hover:underline font-medium">
-                All invoices →
-              </a>
-            </div>
+            <h3 className="text-xl font-semibold mb-4">Payment History</h3>
             <div className="bg-muted/40 rounded-lg p-6 text-center">
               <div className="text-3xl mb-2">🧾</div>
               <p className="text-muted-foreground text-sm">
-                Invoices and payment history are available in the billing portal.
+                Invoices and payment history are managed by the platform administrator.
               </p>
-              <a href={`${PORTAL_URL}/billing`} target="_blank" rel="noopener noreferrer"
-                className="inline-block mt-3 text-sm text-primary font-semibold hover:underline">
-                Open Billing Portal →
-              </a>
+              <button
+                onClick={() => navigate("/dashboard/support")}
+                className="inline-block mt-3 text-sm text-primary font-semibold hover:underline"
+              >
+                Contact Support for Billing Queries →
+              </button>
             </div>
           </div>
         </div>
 
-        {/* ── Right column ─────────────────────────────────────────────── */}
+        {/* Right column */}
         <div className="space-y-6">
-          <SeatLimitCard />
+          <SeatLimitCard onUpgrade={() => setShowUpgradeModal(true)} />
           <div className="bg-card border border-border rounded-xl p-5 space-y-3">
             <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
               Quick Links
@@ -344,10 +325,12 @@ export function BillingPage() {
             >
               <span>📋</span> Select New Plan
             </button>
-            <a href={`${PORTAL_URL}/billing`} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors">
-              <span>💳</span> Payment History
-            </a>
+            <button
+              onClick={() => navigate("/dashboard/support")}
+              className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors w-full text-left"
+            >
+              <span>💳</span> Billing Queries
+            </button>
             <button
               onClick={() => setShowUpgradeModal(true)}
               className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors w-full text-left"
@@ -360,4 +343,3 @@ export function BillingPage() {
     </div>
   );
 }
-
