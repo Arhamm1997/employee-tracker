@@ -185,8 +185,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
             } else if (msg.type === "new-alert") {
               setLatestAlerts(prev => [msg.data as Alert, ...prev.slice(0, 9)]);
             } else if (msg.type === "new_message") {
-              // Increment unread messages badge (the ConversationPage handles deducting via markRead)
               setUnreadMessages(prev => prev + 1);
+            } else if (msg.type === "slackMessage:new") {
+              const d = msg.data as { direction?: string };
+              if (d?.direction === "inbound") {
+                setUnreadMessages(prev => prev + 1);
+              }
             }
 
             // ── Dynamic subscribers (WebRTC, live-frame, etc.) ───────────
