@@ -138,12 +138,19 @@ router.get("/subscription/info", authenticate, async (req: Request, res: Respons
     const maxEmployees = subscription?.plan?.maxSeats ?? settings?.maxEmployees ?? 10;
     const maxAdmins = subscription?.plan?.maxAdmins ?? 5;
 
+    const now = Date.now();
+    const periodEnd = subscription?.currentPeriodEnd;
+    const daysLeft = periodEnd ? Math.ceil((periodEnd.getTime() - now) / (1000 * 60 * 60 * 24)) : null;
+    const subStatus = !subscription ? "ACTIVE"
+      : (daysLeft !== null && daysLeft <= 0) ? "EXPIRED"
+      : subscription.status;
+
     const info = {
       plan: {
         id: subscription?.plan?.id ?? "default",
         name: subscription?.plan?.name ?? "Standard",
         slug: "standard",
-        price_pkr: 0,
+        price_pkr: subscription?.plan?.priceMonthly ?? 0,
         max_admins: maxAdmins,
         max_employees: maxEmployees === -1 ? 9999 : maxEmployees,
         features: {
@@ -160,6 +167,9 @@ router.get("/subscription/info", authenticate, async (req: Request, res: Respons
           lock: subscription?.plan?.lockEnabled ?? false,
         },
       },
+      subscription_status: subStatus,
+      current_period_end: periodEnd ? periodEnd.toISOString() : null,
+      billing_cycle: subscription?.billingCycle ?? null,
       admin_seats: {
         used: adminCount,
         limit: maxAdmins === -1 ? -1 : maxAdmins,

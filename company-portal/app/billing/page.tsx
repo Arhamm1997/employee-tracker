@@ -24,7 +24,7 @@ export default function BillingPage() {
   const [actionSuccess, setActionSuccess] = useState("");
 
   useEffect(() => {
-    if (!getToken()) { router.replace("/signup"); return; }
+    if (!getToken()) { router.replace("/login?returnTo=/billing"); return; }
 
     Promise.all([
       api.getSubscriptionUsage().catch(() => null),

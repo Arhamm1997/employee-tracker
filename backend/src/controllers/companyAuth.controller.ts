@@ -170,6 +170,52 @@ export async function verifyEmail(
   }
 }
 
+// ─── POST /api/company/auth/login ────────────────────────────────────────────
+
+export async function login(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const { email, password } = req.body as { email?: string; password?: string };
+
+    if (!email || !password) {
+      res.status(400).json({ message: "Email and password are required" });
+      return;
+    }
+
+    const company = await prisma.company.findUnique({ where: { email } });
+
+    if (!company) {
+      res.status(401).json({ message: "Invalid email or password" });
+      return;
+    }
+
+    const valid = await bcrypt.compare(password, company.passwordHash);
+    if (!valid) {
+      res.status(401).json({ message: "Invalid email or password" });
+      return;
+    }
+
+    if (!company.emailVerified) {
+      res.status(403).json({ message: "Please verify your email before logging in" });
+      return;
+    }
+
+    const token = jwt.sign(
+      { companyId: company.id, email: company.email },
+      process.env.COMPANY_JWT_SECRET!,
+      { expiresIn: "30d" }
+    );
+
+    logger.info(`Company login: ${email}`);
+    res.json({ message: "Login successful", token, companyName: company.name });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // ─── POST /api/company/auth/resend-verification ───────────────────────────────
 
 export async function resendVerification(

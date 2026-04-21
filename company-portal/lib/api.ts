@@ -76,6 +76,9 @@ export interface SubscriptionUsage {
 }
 
 export const api = {
+  login(body: { email: string; password: string }) {
+    return request<{ message: string; token: string; companyName: string }>("/company/auth/login", { method: "POST", body: JSON.stringify(body) });
+  },
   register(body: { companyName: string; email: string; password: string }) {
     return request<{ message: string; verificationUrl?: string }>("/company/auth/register", { method: "POST", body: JSON.stringify(body) });
   },

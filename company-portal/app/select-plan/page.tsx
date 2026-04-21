@@ -23,7 +23,7 @@ export default function SelectPlanPage() {
       saveToken(tokenFromUrl);
       window.history.replaceState({}, "", "/select-plan");
     }
-    if (!getToken() && !tokenFromUrl) router.replace("/signup");
+    if (!getToken() && !tokenFromUrl) router.replace("/login?returnTo=/select-plan");
   }, [router]);
 
   useEffect(() => {

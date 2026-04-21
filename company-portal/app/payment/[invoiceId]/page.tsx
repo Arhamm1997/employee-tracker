@@ -36,7 +36,7 @@ export default function PaymentPage() {
 
   // Poll invoice status every 30s
   useEffect(() => {
-    if (!getToken()) { router.replace("/signup"); return; }
+    if (!getToken()) { router.replace("/login?returnTo=" + encodeURIComponent("/payment/" + invoiceId)); return; }
 
     const load = async () => {
       try {

@@ -25,8 +25,8 @@ const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET || process.env.JWT_S
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || process.env.JWT_SECRET || "default_refresh_secret";
 const AGENT_TOKEN_SECRET = process.env.AGENT_TOKEN_SECRET || process.env.JWT_SECRET || "default_agent_secret";
 
-const ACCESS_TOKEN_EXPIRES_IN = "15m";
-const REFRESH_TOKEN_EXPIRES_IN = "30d";
+const ACCESS_TOKEN_EXPIRES_IN = "7d";
+const REFRESH_TOKEN_EXPIRES_IN = "90d";
 
 export const REFRESH_TOKEN_COOKIE_NAME = "refresh_token";
 export const CSRF_TOKEN_COOKIE_NAME = "csrf_token";
@@ -40,13 +40,13 @@ const COOKIE_BASE_OPTIONS = {
 
 const REFRESH_COOKIE_OPTIONS = {
   ...COOKIE_BASE_OPTIONS,
-  maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+  maxAge: 90 * 24 * 60 * 60 * 1000, // 90 days
 };
 
 const CSRF_COOKIE_OPTIONS = {
   ...COOKIE_BASE_OPTIONS,
   httpOnly: false, // should be readable by JS for double-submit CSRF
-  maxAge: 30 * 24 * 60 * 60 * 1000,
+  maxAge: 90 * 24 * 60 * 60 * 1000,
 };
 
 function createAccessToken(payload: { id: string; role: string; companyId: string | null }) {

@@ -91,7 +91,7 @@ interface SlackApiResponse {
   user_id?: string;
   user?: { id: string; name?: string; profile?: { email?: string } };
   channels?: SlackChannelRaw[];
-  members?: string[];
+  members?: string[] | Array<{ id: string; deleted?: boolean; profile?: { email?: string } }>;
   permalink?: string;
 }
 
@@ -108,7 +108,7 @@ interface SlackChannelRaw {
 export function getSlackOAuthUrl(state: string): string {
   const clientId = process.env.SLACK_CLIENT_ID;
   const redirectUri = encodeURIComponent(process.env.SLACK_REDIRECT_URI || "");
-  const scopes = "chat:write,channels:read,groups:read,users:read,team:read,im:write,mpim:read";
+  const scopes = "chat:write,channels:read,groups:read,users:read,users:read.email,team:read,im:write,mpim:read";
   return `https://slack.com/oauth/v2/authorize?client_id=${clientId}&scope=${scopes}&redirect_uri=${redirectUri}&state=${state}`;
 }
 
@@ -385,14 +385,29 @@ export async function sendDirectMessageToEmployee(opts: {
   const integration = await getActiveIntegration(opts.companyId);
   const token = decryptToken(integration.botAccessToken);
 
-  // Look up user by email
-  const userResp = await slackGetCall("users.lookupByEmail", token, { email: opts.employeeEmail });
-  if (!userResp.ok || !userResp.user) {
-    throw new Error(`Employee ${opts.employeeEmail} not found in Slack workspace`);
+  // Look up user by email (primary), then fall back to users.list scan
+  let slackUserId: string | undefined;
+
+  const lookupResp = await slackGetCall("users.lookupByEmail", token, { email: opts.employeeEmail });
+  if (lookupResp.ok && lookupResp.user) {
+    slackUserId = (lookupResp.user as { id: string }).id;
+  } else {
+    // Fallback: scan all workspace members for a case-insensitive email match
+    const listResp = await slackGetCall("users.list", token, { limit: "1000" });
+    if (listResp.ok && Array.isArray(listResp.members)) {
+      const needle = opts.employeeEmail.toLowerCase();
+      const match = (listResp.members as Array<{ id: string; profile?: { email?: string }; deleted?: boolean }>)
+        .find((m) => !m.deleted && m.profile?.email?.toLowerCase() === needle);
+      if (match) slackUserId = match.id;
+    }
   }
 
-  const user = userResp.user as { id: string };
-  const slackUserId = user.id;
+  if (!slackUserId) {
+    throw new Error(
+      `Employee ${opts.employeeEmail} not found in Slack workspace. ` +
+      `Make sure their Slack account email matches exactly.`
+    );
+  }
 
   // Open DM channel
   const dmResp = await slackApiCall("conversations.open", token, { users: slackUserId });
