@@ -108,7 +108,7 @@ interface SlackChannelRaw {
 export function getSlackOAuthUrl(state: string): string {
   const clientId = process.env.SLACK_CLIENT_ID;
   const redirectUri = encodeURIComponent(process.env.SLACK_REDIRECT_URI || "");
-  const scopes = "chat:write,channels:read,groups:read,users:read,users:read.email,team:read,im:write,mpim:read";
+  const scopes = "chat:write,channels:read,groups:read,users:read,users:read.email,team:read,im:write,im:read,im:history,mpim:read";
   return `https://slack.com/oauth/v2/authorize?client_id=${clientId}&scope=${scopes}&redirect_uri=${redirectUri}&state=${state}`;
 }
 
