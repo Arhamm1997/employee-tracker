@@ -87,7 +87,13 @@ app.use(
 );
 
 // ── Body Parsing ─────────────────────────────────────────────────────────────
-app.use(express.json({ limit: "2mb" }));
+// Capture raw body for Slack webhook signature verification
+app.use(express.json({
+  limit: "2mb",
+  verify: (req: Request & { rawBody?: string }, _res, buf) => {
+    req.rawBody = buf.toString("utf8");
+  },
+}));
 app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 app.use(cookieParser()); // ✅ Required for httpOnly cookie auth
 
