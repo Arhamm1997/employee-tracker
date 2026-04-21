@@ -151,7 +151,7 @@ export function BillingPage() {
           <div>
             <p className="font-semibold text-sm">
               {isExpired
-                ? "Subscription expire ho gayi — Dashboard access limited hai"
+                ? "Subscription expired — Dashboard access is limited"
                 : `⚠️ Subscription expires in ${daysLeft} days — Renew now`}
             </p>
             <a
@@ -234,7 +234,7 @@ export function BillingPage() {
                 <div>
                   <p className="font-semibold">Upgrade Request Pending</p>
                   <p className="text-xs opacity-80">
-                    {pendingRequest.requestedPlan.name} plan ke liye request submit ho gayi — Admin review kar raha hai.
+                    Upgrade request submitted for {pendingRequest.requestedPlan.name} plan — awaiting admin review.
                   </p>
                 </div>
               </div>
@@ -284,7 +284,7 @@ export function BillingPage() {
                     <textarea
                       value={note}
                       onChange={e => setNote(e.target.value)}
-                      placeholder="Admin ko koi message likhein..."
+                      placeholder="Leave a message for the admin (optional)..."
                       rows={3}
                       className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                     />
@@ -301,7 +301,7 @@ export function BillingPage() {
                       disabled={!selectedPlanId || submitting}
                       className="flex-1 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
                     >
-                      {submitting ? "Submitting..." : "Request Bhejein 🚀"}
+                      {submitting ? "Submitting..." : "Send Request 🚀"}
                     </button>
                   </div>
                 </div>
@@ -325,7 +325,7 @@ export function BillingPage() {
               </p>
               <a href={`${PORTAL_URL}/billing`} target="_blank" rel="noopener noreferrer"
                 className="inline-block mt-3 text-sm text-primary font-semibold hover:underline">
-                Billing Portal Kholein →
+                Open Billing Portal →
               </a>
             </div>
           </div>
@@ -338,18 +338,22 @@ export function BillingPage() {
             <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
               Quick Links
             </h3>
-            <a href={`${PORTAL_URL}/select-plan`} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors">
+            <button
+              onClick={() => setShowUpgradeModal(true)}
+              className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors w-full text-left"
+            >
               <span>📋</span> Select New Plan
-            </a>
+            </button>
             <a href={`${PORTAL_URL}/billing`} target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors">
               <span>💳</span> Payment History
             </a>
-            <a href={`${PORTAL_URL}/billing`} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors">
+            <button
+              onClick={() => setShowUpgradeModal(true)}
+              className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors w-full text-left"
+            >
               <span>⬆️</span> Upgrade / Downgrade
-            </a>
+            </button>
           </div>
         </div>
       </div>

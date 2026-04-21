@@ -467,7 +467,7 @@ export function EmployeeDetailPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="gap-1.5 bg-[#4A154B] text-white border-[#4A154B] hover:bg-[#6A254B]"
+                  className="gap-1.5 bg-[#4A154B] text-white border-[#4A154B] hover:bg-[#3d0f3d]"
                   onClick={() => setSlackMessageDialog(true)}
                   title="Send Slack DM"
                 >
@@ -1119,7 +1119,7 @@ export function EmployeeDetailPage() {
               placeholder="Type your message here..."
               value={slackMessage}
               onChange={(e) => setSlackMessage(e.target.value)}
-              className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#4A154B] resize-none"
+              className="w-full p-3 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-[#4A154B] resize-none bg-background text-foreground"
               rows={4}
               disabled={sendingSlackMessage}
             />

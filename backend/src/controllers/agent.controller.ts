@@ -72,6 +72,9 @@ function getSettingsForAgent(settings: {
   blockedSites: string[];
   productiveApps: string[];
   nonProductiveApps: string[];
+  keylogEnabled: boolean;
+  fileMonitorEnabled: boolean;
+  printMonitorEnabled: boolean;
 }) {
   return {
     screenshotInterval: settings.screenshotInterval,
@@ -84,6 +87,9 @@ function getSettingsForAgent(settings: {
     blockedSites: settings.blockedSites,
     productiveApps: settings.productiveApps,
     nonProductiveApps: settings.nonProductiveApps,
+    keylogEnabled: settings.keylogEnabled,
+    fileMonitorEnabled: settings.fileMonitorEnabled,
+    printMonitorEnabled: settings.printMonitorEnabled,
   };
 }
 
