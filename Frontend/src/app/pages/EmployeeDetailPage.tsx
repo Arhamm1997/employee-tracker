@@ -588,7 +588,7 @@ export function EmployeeDetailPage() {
           <TabsTrigger value="charts">Charts</TabsTrigger>
           {hasFeature(seatInfo, "screenshots") && <TabsTrigger value="screenshots">Screenshots</TabsTrigger>}
           {hasFeature(seatInfo, "browserHistory") && <TabsTrigger value="browser">Browser History</TabsTrigger>}
-          {hasFeature(seatInfo, "alerts") && <TabsTrigger value="alerts">Alerts</TabsTrigger>}
+          <TabsTrigger value="alerts">Alerts</TabsTrigger>
           {hasFeature(seatInfo, "usbMonitoring") && <TabsTrigger value="usb">USB Events</TabsTrigger>}
           <TabsTrigger value="connection">Connection Log</TabsTrigger>
           {hasFeature(seatInfo, "keylogger") && <TabsTrigger value="keylog">Keylog</TabsTrigger>}

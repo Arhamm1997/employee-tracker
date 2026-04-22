@@ -27,7 +27,7 @@ import { withFeatureGate } from "./components/layout/FeatureGate";
 // Feature-gated page wrappers (defined at module level for stable component refs)
 // Keys must match what /api/subscription/info returns in plan.features
 const ScreenshotsGated = withFeatureGate("screenshots", ScreenshotsPage);
-const AlertsGated = withFeatureGate("alerts", AlertsPage);
+const AlertsGated = AlertsPage;
 const ReportsGated = ReportsPage; // available on all plans
 const LiveScreenGated = withFeatureGate("live_screen", LiveScreenPage);
 

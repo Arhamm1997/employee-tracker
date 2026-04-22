@@ -441,9 +441,7 @@ export function SettingsPage() {
             <TabsTrigger value="blocked" className="gap-1.5"><Globe className="w-3.5 h-3.5" />Blocked Sites</TabsTrigger>
           )}
           <TabsTrigger value="apps" className="gap-1.5"><AppWindow className="w-3.5 h-3.5" />App Categories</TabsTrigger>
-          {planFeatures["alerts"] === true && (
-            <TabsTrigger value="notifications" className="gap-1.5"><Bell className="w-3.5 h-3.5" />Notifications</TabsTrigger>
-          )}
+          <TabsTrigger value="notifications" className="gap-1.5"><Bell className="w-3.5 h-3.5" />Notifications</TabsTrigger>
           <TabsTrigger value="retention" className="gap-1.5"><Database className="w-3.5 h-3.5" />Data Retention</TabsTrigger>
           <TabsTrigger value="security" className="gap-1.5"><Shield className="w-3.5 h-3.5" />Security</TabsTrigger>
           <TabsTrigger value="integrations" className="gap-1.5"><PlugZap className="w-3.5 h-3.5" />Integrations</TabsTrigger>
