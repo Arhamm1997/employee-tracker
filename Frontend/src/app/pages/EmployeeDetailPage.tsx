@@ -701,18 +701,18 @@ export function EmployeeDetailPage() {
 
         {/* Screenshots Tab */}
         <TabsContent value="screenshots">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {screenshots.length > 0 ? screenshots.map((ss, i) => (
               <motion.div
                 key={ss.id}
-                whileHover={{ scale: 1.03 }}
-                className="cursor-pointer rounded-lg overflow-hidden border border-border"
+                whileHover={{ scale: 1.02 }}
+                className="cursor-pointer rounded-lg overflow-hidden border border-border bg-muted/30 shadow-sm"
                 onClick={() => setScreenshotModal(i)}
               >
-                <img src={ss.imageUrl} alt="" className="w-full h-24 object-cover" />
-                <div className="p-2">
-                  <p className="truncate text-muted-foreground" style={{ fontSize: "11px" }}>{ss.app}</p>
-                  <p className="text-muted-foreground" style={{ fontSize: "10px" }}>
+                <img src={ss.imageUrl} alt="" className="w-full object-cover" style={{ height: "200px" }} />
+                <div className="px-3 py-2 flex items-center justify-between">
+                  <p className="truncate font-medium" style={{ fontSize: "12px" }}>{ss.app}</p>
+                  <p className="text-muted-foreground shrink-0 ml-2" style={{ fontSize: "11px" }}>
                     {format(new Date(ss.timestamp), "h:mm a")}
                   </p>
                 </div>
