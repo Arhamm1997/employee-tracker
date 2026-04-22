@@ -50,6 +50,62 @@ function fmt12(iso: string): string {
   } catch { return iso; }
 }
 
+// Special key token → display label mapping
+const SPECIAL_KEYS: Record<string, string> = {
+  BS: "⌫", Enter: "↵", Tab: "⇥", Shift: "⇧", Ctrl: "^", Alt: "Alt",
+  CapsLock: "⇪", Esc: "Esc", Space: "·", Del: "Del", Ins: "Ins",
+  Home: "Home", End: "End", PgUp: "PgUp", PgDn: "PgDn",
+  Up: "↑", Dn: "↓", Lt: "←", Rt: "→",
+  F1: "F1", F2: "F2", F3: "F3", F4: "F4", F5: "F5", F6: "F6",
+  F7: "F7", F8: "F8", F9: "F9", F10: "F10", F11: "F11", F12: "F12",
+  Win: "⊞", Menu: "☰", PrintScr: "PrtSc",
+};
+
+type KeySegment = { type: "text"; value: string } | { type: "key"; label: string };
+
+function parseKeylog(raw: string): KeySegment[] {
+  const segments: KeySegment[] = [];
+  let text = "";
+  const tokenRe = /\[([^\]]+)\]/g;
+  let lastIdx = 0;
+  let m: RegExpExecArray | null;
+  while ((m = tokenRe.exec(raw)) !== null) {
+    if (m.index > lastIdx) text += raw.slice(lastIdx, m.index);
+    const token = m[1];
+    if (token === "BS") {
+      // apply backspace to accumulated text
+      if (text.length > 0) text = text.slice(0, -1);
+      else segments.push({ type: "key", label: "⌫" });
+    } else if (SPECIAL_KEYS[token]) {
+      if (text) { segments.push({ type: "text", value: text }); text = ""; }
+      segments.push({ type: "key", label: SPECIAL_KEYS[token] });
+    } else {
+      text += `[${token}]`;
+    }
+    lastIdx = m.index + m[0].length;
+  }
+  if (lastIdx < raw.length) text += raw.slice(lastIdx);
+  if (text) segments.push({ type: "text", value: text });
+  return segments;
+}
+
+function KeylogDisplay({ raw }: { raw: string }) {
+  const segments = parseKeylog(raw);
+  return (
+    <span className="break-all text-xs font-mono">
+      {segments.map((seg, i) =>
+        seg.type === "text" ? (
+          <span key={i}>{seg.value}</span>
+        ) : (
+          <span key={i} className="inline-flex items-center mx-0.5 px-1 py-0 rounded text-[10px] font-sans bg-muted-foreground/20 text-muted-foreground border border-muted-foreground/30">
+            {seg.label}
+          </span>
+        )
+      )}
+    </span>
+  );
+}
+
 export function EmployeeDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -872,8 +928,8 @@ export function EmployeeDetailPage() {
                     {keylogHistory.map(e => (
                       <TableRow key={e.id}>
                         <TableCell style={{ fontSize: "12px" }}>{e.appName}</TableCell>
-                        <TableCell style={{ fontSize: "12px", maxWidth: "300px" }}>
-                          <code className="bg-muted px-1 py-0.5 rounded text-xs break-all">{e.keys}</code>
+                        <TableCell style={{ fontSize: "12px", maxWidth: "400px" }}>
+                          <KeylogDisplay raw={e.keys} />
                         </TableCell>
                         <TableCell style={{ fontSize: "12px", whiteSpace: "nowrap" }}>{fmt12(e.timestamp)}</TableCell>
                       </TableRow>
