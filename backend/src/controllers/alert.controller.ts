@@ -3,16 +3,19 @@ import prisma from "../lib/prisma";
 import { broadcastAlertCount } from "../lib/websocket";
 import { AuthRequest } from "../middleware/auth.middleware";
 
-function formatAlert(alert: {
-  id: string;
-  type: string;
-  severity: string;
-  employeeId: string;
-  message: string;
-  timestamp: Date;
-  isRead: boolean;
-  employee: { name: string };
-}) {
+function formatAlert(
+  alert: {
+    id: string;
+    type: string;
+    severity: string;
+    employeeId: string;
+    message: string;
+    timestamp: Date;
+    isRead: boolean;
+    employee: { name: string };
+  },
+  slackUnreadCount = 0,
+) {
   return {
     id: alert.id,
     type: alert.type,
@@ -22,6 +25,7 @@ function formatAlert(alert: {
     message: alert.message,
     timestamp: alert.timestamp.toISOString(),
     read: alert.isRead,
+    slackUnreadCount,
   };
 }
 
@@ -57,7 +61,22 @@ export async function getAlerts(
       prisma.alert.count({ where }),
     ]);
 
-    res.json(alerts.map(formatAlert));
+    // Batch-fetch unread Slack reply counts for all returned alerts in a single query
+    // (avoids N+1 API calls from the frontend badge component)
+    const alertIds = alerts.map((a) => a.id);
+    const slackCountRows = alertIds.length
+      ? await prisma.slackMessage.groupBy({
+          by: ["alertId"],
+          where: { alertId: { in: alertIds }, direction: "inbound", isRead: false },
+          _count: { id: true },
+        })
+      : [];
+    const slackCountMap: Record<string, number> = {};
+    for (const row of slackCountRows) {
+      if (row.alertId) slackCountMap[row.alertId] = row._count.id;
+    }
+
+    res.json(alerts.map((a) => formatAlert(a, slackCountMap[a.id] ?? 0)));
   } catch (err) {
     next(err);
   }

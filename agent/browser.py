@@ -42,6 +42,15 @@ def _safe_read_db(db_path: str, query: str, browser: str, profile: str, since: d
     try:
         shutil.copy2(db_path, tmp)
         log.debug("Copied %s DB from %s to temp", browser, db_path)
+        # Also copy the WAL file if it exists so SQLite can see uncommitted (in-flight) entries
+        wal_src = db_path + "-wal"
+        wal_dst = tmp + "-wal"
+        if os.path.exists(wal_src):
+            try:
+                shutil.copy2(wal_src, wal_dst)
+                log.debug("Copied %s WAL file to temp", browser)
+            except (PermissionError, OSError) as e:
+                log.debug("Could not copy %s WAL file (non-fatal): %s", browser, e)
     except (PermissionError, OSError) as e:
         log.warning("Cannot copy %s DB from %s (likely browser running) - trying direct read: %s",
                     browser, db_path, e)
@@ -90,6 +99,12 @@ def _safe_read_db(db_path: str, query: str, browser: str, profile: str, since: d
                 os.remove(tmp)
             except OSError as e:
                 log.debug("Failed to remove temp DB %s: %s", tmp, e)
+            wal_dst = tmp + "-wal"
+            if os.path.exists(wal_dst):
+                try:
+                    os.remove(wal_dst)
+                except OSError:
+                    pass
 
     return results
 

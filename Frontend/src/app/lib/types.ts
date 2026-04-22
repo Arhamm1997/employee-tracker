@@ -45,6 +45,7 @@ export interface Alert {
   message: string;
   timestamp: string;
   read: boolean;
+  slackUnreadCount?: number;
 }
 
 export interface Admin {

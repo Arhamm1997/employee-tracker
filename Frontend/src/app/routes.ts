@@ -31,7 +31,7 @@ const AlertsGated = withFeatureGate("alerts", AlertsPage);
 const ReportsGated = ReportsPage; // available on all plans
 const LiveScreenGated = withFeatureGate("live_screen", LiveScreenPage);
 
-const PORTAL_URL = (import.meta as { env?: Record<string, string> }).env?.VITE_PORTAL_URL || "http://localhost:3001";
+const PORTAL_URL = (import.meta as { env?: Record<string, string> }).env?.VITE_PORTAL_URL || "https://monitorhub.live";
 
 export const router = createBrowserRouter([
   // Public routes

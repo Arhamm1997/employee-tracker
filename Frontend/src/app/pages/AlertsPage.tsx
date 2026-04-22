@@ -252,7 +252,11 @@ export function AlertsPage() {
                         {format(new Date(alert.timestamp), "PPpp")}
                       </span>
                       {slackConnected && (
-                        <SlackRepliesBadge alertId={alert.id} onClick={() => setSlackPanelAlertId(alert.id)} />
+                        <SlackRepliesBadge
+                          alertId={alert.id}
+                          initialUnreadCount={alert.slackUnreadCount ?? 0}
+                          onClick={() => setSlackPanelAlertId(alert.id)}
+                        />
                       )}
                     </div>
                   </div>

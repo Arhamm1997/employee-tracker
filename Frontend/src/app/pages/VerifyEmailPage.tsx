@@ -6,13 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../co
 import { Button } from "../components/ui/button";
 import { toast } from "sonner";
 
-const API_BASE = (import.meta as { env?: Record<string, string> }).env?.VITE_API_URL || "http://localhost:5001/api";
+const API_BASE = (import.meta as { env?: Record<string, string> }).env?.VITE_API_URL || "/api";
 
 const PORTAL_URL =
   (import.meta as { env?: Record<string, string> }).env?.VITE_PORTAL_URL ||
-  "http://localhost:3001";
+  "https://monitorhub.live";
 
-async function apiVerifyEmail(token: string) {
+async function apiVerifyEmail(token: string): Promise<{ message: string; token?: string }> {
   const res = await fetch(`${API_BASE}/company/auth/verify-email?token=${token}`);
   const json = await res.json();
   if (!res.ok) throw new Error(json.message || "Verification failed");
@@ -44,13 +44,19 @@ export function VerifyEmailPage() {
   const [resendCooldown, setResendCooldown] = useState(0);
   const [status, setStatus] = useState<VerifyStatus>(token ? "verifying" : "idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [companyToken, setCompanyToken] = useState<string | null>(null);
 
   // Auto-verify if token present in URL
   useEffect(() => {
     if (!token) return;
     setStatus("verifying");
     apiVerifyEmail(token)
-      .then(() => setStatus("success"))
+      .then((data: unknown) => {
+        // Backend returns { token } — save it so we can pass to the portal
+        const t = (data as { token?: string })?.token;
+        if (t) setCompanyToken(t);
+        setStatus("success");
+      })
       .catch(err => {
         setStatus("error");
         setErrorMsg(err instanceof Error ? err.message : "Verification failed");
@@ -120,7 +126,11 @@ export function VerifyEmailPage() {
                   Now select a plan to activate your account.
                 </p>
               </div>
-              <a href={`${PORTAL_URL}/select-plan`} target="_blank" rel="noopener noreferrer">
+              <a
+                href={companyToken
+                  ? `${PORTAL_URL}/select-plan?company_token=${encodeURIComponent(companyToken)}`
+                  : `${PORTAL_URL}/select-plan`}
+              >
                 <Button className="w-full bg-[#6366f1] hover:bg-[#5558e6]">
                   Choose a Plan →
                 </Button>

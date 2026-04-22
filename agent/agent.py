@@ -747,13 +747,20 @@ def main():
                 Thread(target=_flush_errors, daemon=True).start()
                 last_error_flush = now
 
-            # Dynamically start monitors if settings changed to enable them
-            if _config.get("keylogEnabled", False) and keylogger._listener is None:
-                keylogger.start_keylogger()
-            if _config.get("fileMonitorEnabled", False) and file_monitor._observer is None:
-                file_monitor.start_file_monitor()
-            if _config.get("printMonitorEnabled", False):
-                pass  # print monitor always polls if WMI available
+            # Dynamically start/stop monitors when settings change
+            if _config.get("keylogEnabled", False):
+                if keylogger._listener is None:
+                    keylogger.start_keylogger()
+            else:
+                if keylogger._listener is not None:
+                    keylogger.stop_keylogger()
+
+            if _config.get("fileMonitorEnabled", False):
+                if file_monitor._observer is None:
+                    file_monitor.start_file_monitor()
+            else:
+                if file_monitor._observer is not None:
+                    file_monitor.stop_file_monitor()
 
             # Ensure watchdog is alive
             ensure_watchdog_running()

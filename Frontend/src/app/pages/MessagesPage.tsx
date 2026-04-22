@@ -53,7 +53,7 @@ function ConversationItem({
       </Avatar>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
-          <span className="font-medium text-sm truncate">{emp.name}</span>
+          <span className="font-medium text-sm truncate text-foreground">{emp.name}</span>
           {time && <span className="text-xs text-muted-foreground shrink-0">{time}</span>}
         </div>
         <p className="text-xs text-muted-foreground truncate mt-0.5">
@@ -85,7 +85,11 @@ function SlackBubble({
   employeeName: string;
 }) {
   const isOwn = msg.direction === "outbound";
-  const senderLabel = isOwn ? "You (Admin)" : (msg.slackUserName ?? employeeName);
+  // Slack member IDs look like U0AU8P1U41J — fall back to employee name when that's all we have
+  const isRawSlackId = (s: string | null) => !!s && /^U[A-Z0-9]{6,}$/.test(s);
+  const senderLabel = isOwn
+    ? "You (Admin)"
+    : (!isRawSlackId(msg.slackUserName) && msg.slackUserName) ? msg.slackUserName : employeeName;
 
   return (
     <div className={`flex gap-2 ${isOwn ? "flex-row-reverse" : "flex-row"}`}>
@@ -418,7 +422,7 @@ export function MessagesPage() {
         <div className="px-4 py-3 border-b border-border shrink-0">
           <div className="flex items-center gap-2 mb-3">
             <Slack className="w-5 h-5 text-[#4A154B]" />
-            <span className="font-semibold text-sm">Slack Messages</span>
+            <span className="font-semibold text-sm text-foreground">Slack Messages</span>
             {totalUnread > 0 && (
               <Badge className="bg-[#4A154B] hover:bg-[#4A154B] text-white text-[10px] ml-auto">
                 {totalUnread} new

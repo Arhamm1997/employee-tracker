@@ -124,24 +124,25 @@ export function SlackMessagesPanel({ alertId, onClose }: SlackMessagesPanelProps
 }
 
 // ─── Compact badge shown in alerts list ───────────────────────────────────────
+// NOTE: Does NOT fetch data itself — count comes from the parent via the alerts
+// list API (which batch-fetches slackUnreadCount). WebSocket increments it live.
 
 interface SlackRepliesBadgeProps {
   alertId: string;
+  initialUnreadCount?: number;
   onClick: () => void;
 }
 
-export function SlackRepliesBadge({ alertId, onClick }: SlackRepliesBadgeProps) {
-  const [unreadCount, setUnreadCount] = useState(0);
+export function SlackRepliesBadge({ alertId, initialUnreadCount = 0, onClick }: SlackRepliesBadgeProps) {
+  const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
   const { subscribeToMessage } = useSocket();
 
+  // Keep in sync if parent re-renders with a fresh count (e.g. after page reload)
   useEffect(() => {
-    apiGetAlertSlackMessages(alertId)
-      .then(({ messages }) => {
-        setUnreadCount(messages.filter((m) => m.direction === "inbound" && !m.isRead).length);
-      })
-      .catch(() => {});
-  }, [alertId]);
+    setUnreadCount(initialUnreadCount);
+  }, [initialUnreadCount]);
 
+  // Real-time: increment on new inbound Slack messages via WebSocket
   useEffect(() => {
     const unsubscribe = subscribeToMessage("slackMessage:new", (data: SlackMessage) => {
       if (data.alertId === alertId && data.direction === "inbound") {

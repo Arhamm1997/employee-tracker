@@ -11,52 +11,123 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const COMPANY = process.env.COMPANY_NAME || "Company";
-const DASHBOARD_URL = process.env.DASHBOARD_URL || "http://localhost:3000";
-const FROM = process.env.SMTP_FROM || `Employee Monitor <noreply@company.com>`;
+const BRAND = "MonitorHub";
+const DASHBOARD_URL = process.env.DASHBOARD_URL || "https://app.monitorhub.live";
+const FROM = process.env.SMTP_FROM || `MonitorHub <noreply@monitorhub.live>`;
 
-function baseTemplate(title: string, body: string): string {
-  return `
-<!DOCTYPE html>
-<html>
+// ─── Base Template ────────────────────────────────────────────────────────────
+// Clean, professional email template — no hardcoded CTA, no wrong subtitle.
+// Each send function provides its own body content (including buttons).
+
+function baseTemplate(opts: {
+  title: string;
+  subtitle?: string;
+  accentColor?: string;
+  body: string;
+}): string {
+  const accent = opts.accentColor || "#6366f1";
+  const subtitle = opts.subtitle || "";
+
+  return `<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f4f4f5; margin: 0; padding: 20px; }
-    .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .header { background: #1e1e2e; padding: 24px 32px; }
-    .header h1 { color: #ffffff; margin: 0; font-size: 20px; font-weight: 600; }
-    .header span { color: #a78bfa; font-size: 13px; }
-    .body { padding: 32px; }
-    .alert-box { background: #fef2f2; border-left: 4px solid #ef4444; border-radius: 4px; padding: 16px; margin: 16px 0; }
-    .alert-box.medium { background: #fffbeb; border-color: #f59e0b; }
-    .alert-box.low { background: #f0fdf4; border-color: #22c55e; }
-    .field { margin: 8px 0; }
-    .field strong { color: #374151; display: inline-block; width: 120px; }
-    .field span { color: #6b7280; }
-    .btn { display: inline-block; background: #6366f1; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 6px; font-size: 14px; font-weight: 500; margin-top: 24px; }
-    .footer { background: #f9fafb; padding: 16px 32px; text-align: center; font-size: 12px; color: #9ca3af; }
-  </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${opts.title}</title>
+  <!--[if mso]><noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript><![endif]-->
 </head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>${COMPANY} — Employee Monitor</h1>
-      <span>Security Alert Notification</span>
-    </div>
-    <div class="body">
-      <h2 style="color:#111827;margin-top:0;">${title}</h2>
-      ${body}
-      <a href="${DASHBOARD_URL}" class="btn">View in Dashboard →</a>
-    </div>
-    <div class="footer">
-      This is an automated alert from ${COMPANY} Employee Monitor System.<br>
-      © ${new Date().getFullYear()} ${COMPANY}. All rights reserved.
-    </div>
-  </div>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:40px 16px;">
+    <tr><td align="center">
+
+      <!-- Card -->
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+
+        <!-- Header bar -->
+        <tr>
+          <td style="background:${accent};padding:28px 40px;">
+            <table cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="width:36px;height:36px;background:rgba(255,255,255,0.18);border-radius:10px;text-align:center;vertical-align:middle;">
+                  <span style="font-size:20px;line-height:36px;">&#128248;</span>
+                </td>
+                <td style="padding-left:12px;">
+                  <p style="margin:0;color:#ffffff;font-size:18px;font-weight:700;letter-spacing:-0.3px;">${BRAND}</p>
+                  ${subtitle ? `<p style="margin:2px 0 0;color:rgba(255,255,255,0.75);font-size:12px;">${subtitle}</p>` : ""}
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="padding:40px 40px 32px;">
+            <h1 style="margin:0 0 24px;color:#0f172a;font-size:22px;font-weight:700;letter-spacing:-0.4px;">${opts.title}</h1>
+            ${opts.body}
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 40px;text-align:center;">
+            <p style="margin:0;color:#94a3b8;font-size:12px;line-height:1.6;">
+              This email was sent by <strong style="color:#64748b;">${BRAND}</strong>.<br>
+              If you did not expect this email, you can safely ignore it.
+            </p>
+          </td>
+        </tr>
+
+      </table>
+      <!-- /Card -->
+
+    </td></tr>
+  </table>
 </body>
 </html>`;
 }
+
+// ─── Reusable HTML snippets ───────────────────────────────────────────────────
+
+function ctaButton(label: string, url: string, color = "#6366f1"): string {
+  return `
+<table cellpadding="0" cellspacing="0" style="margin:32px auto;">
+  <tr>
+    <td style="background:${color};border-radius:10px;">
+      <a href="${url}" style="display:inline-block;color:#ffffff;text-decoration:none;padding:14px 36px;font-size:15px;font-weight:600;letter-spacing:-0.2px;">${label} &rarr;</a>
+    </td>
+  </tr>
+</table>`;
+}
+
+function infoRow(label: string, value: string, bg = "#ffffff"): string {
+  return `
+<tr style="background:${bg};">
+  <td style="padding:12px 16px;border:1px solid #e2e8f0;color:#475569;font-size:13px;font-weight:600;width:40%;">${label}</td>
+  <td style="padding:12px 16px;border:1px solid #e2e8f0;border-left:none;color:#1e293b;font-size:13px;">${value}</td>
+</tr>`;
+}
+
+function infoTable(rows: string): string {
+  return `<table width="100%" cellpadding="0" cellspacing="0" style="border-radius:8px;overflow:hidden;margin:16px 0;">${rows}</table>`;
+}
+
+function alertBox(content: string, type: "error" | "warning" | "success" | "info" = "info"): string {
+  const colors: Record<string, { bg: string; border: string; text: string }> = {
+    error:   { bg: "#fef2f2", border: "#fca5a5", text: "#dc2626" },
+    warning: { bg: "#fffbeb", border: "#fcd34d", text: "#d97706" },
+    success: { bg: "#f0fdf4", border: "#86efac", text: "#16a34a" },
+    info:    { bg: "#eff6ff", border: "#93c5fd", text: "#2563eb" },
+  };
+  const c = colors[type];
+  return `<div style="background:${c.bg};border:1px solid ${c.border};border-radius:8px;padding:14px 18px;margin:16px 0;color:${c.text};font-size:13px;line-height:1.6;">${content}</div>`;
+}
+
+function fallbackLink(url: string): string {
+  return `<p style="color:#94a3b8;font-size:12px;margin-top:4px;line-height:1.6;">If the button doesn&rsquo;t work, copy and paste this link:<br><a href="${url}" style="color:#6366f1;word-break:break-all;">${url}</a></p>`;
+}
+
+// ─── Alert Email ──────────────────────────────────────────────────────────────
 
 export async function sendAlertEmail(
   to: string[],
@@ -69,33 +140,41 @@ export async function sendAlertEmail(
 ): Promise<void> {
   if (!to.length || !process.env.SMTP_USER) return;
 
-  const severityClass = severity === "high" ? "" : severity === "medium" ? "medium" : "low";
-  const severityLabel =
-    severity === "high" ? "🔴 HIGH" : severity === "medium" ? "🟡 MEDIUM" : "🟢 LOW";
+  const severityColor = severity === "high" ? "#ef4444" : severity === "medium" ? "#f59e0b" : "#22c55e";
+  const severityLabel = severity === "high" ? "🔴 HIGH" : severity === "medium" ? "🟡 MEDIUM" : "🟢 LOW";
+  const typeLabel = alertType.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 
   const body = `
-    <div class="alert-box ${severityClass}">
-      <strong>Alert:</strong> ${message}
-    </div>
-    <div class="field"><strong>Employee:</strong> <span>${employeeName}</span></div>
-    <div class="field"><strong>Department:</strong> <span>${department}</span></div>
-    <div class="field"><strong>Alert Type:</strong> <span>${alertType.replace(/_/g, " ").toUpperCase()}</span></div>
-    <div class="field"><strong>Severity:</strong> <span>${severityLabel}</span></div>
-    <div class="field"><strong>Timestamp:</strong> <span>${timestamp.toLocaleString()}</span></div>
-  `;
+    <p style="color:#475569;margin:0 0 20px;font-size:14px;line-height:1.7;">A new security alert has been triggered on your account.</p>
+    ${alertBox(`<strong>${message}</strong>`, severity === "high" ? "error" : severity === "medium" ? "warning" : "success")}
+    ${infoTable(
+      infoRow("Employee", employeeName) +
+      infoRow("Department", department, "#f8fafc") +
+      infoRow("Alert Type", typeLabel) +
+      infoRow("Severity", `<span style="color:${severityColor};font-weight:700;">${severityLabel}</span>`, "#f8fafc") +
+      infoRow("Time", timestamp.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }))
+    )}
+    ${ctaButton("View in Dashboard", DASHBOARD_URL, severityColor)}`;
 
   try {
     await transporter.sendMail({
       from: FROM,
       to: to.join(", "),
-      subject: `[${severityLabel}] ${alertType.replace(/_/g, " ")} — ${employeeName}`,
-      html: baseTemplate(`Security Alert: ${alertType.replace(/_/g, " ")}`, body),
+      subject: `[${severityLabel}] ${typeLabel} — ${employeeName}`,
+      html: baseTemplate({
+        title: `Security Alert: ${typeLabel}`,
+        subtitle: "Security Alert Notification",
+        accentColor: severityColor,
+        body,
+      }),
     });
     logger.info(`Alert email sent to ${to.join(", ")} for ${employeeName}`);
   } catch (err) {
     logger.error("Failed to send alert email:", err);
   }
 }
+
+// ─── Daily Summary ────────────────────────────────────────────────────────────
 
 export async function sendDailySummaryEmail(
   to: string[],
@@ -111,47 +190,27 @@ export async function sendDailySummaryEmail(
 ): Promise<void> {
   if (!to.length || !process.env.SMTP_USER) return;
 
+  const dateStr = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+
   const body = `
-    <p style="color:#6b7280;">Here is your daily workforce monitoring summary for <strong>${new Date().toLocaleDateString()}</strong>.</p>
-    <table style="width:100%;border-collapse:collapse;margin-top:16px;">
-      <tr style="background:#f9fafb;">
-        <td style="padding:10px 16px;border:1px solid #e5e7eb;font-weight:600;">Total Employees</td>
-        <td style="padding:10px 16px;border:1px solid #e5e7eb;">${stats.totalEmployees}</td>
-      </tr>
-      <tr>
-        <td style="padding:10px 16px;border:1px solid #e5e7eb;font-weight:600;">Online Today</td>
-        <td style="padding:10px 16px;border:1px solid #e5e7eb;color:#22c55e;">${stats.online}</td>
-      </tr>
-      <tr style="background:#f9fafb;">
-        <td style="padding:10px 16px;border:1px solid #e5e7eb;font-weight:600;">Idle</td>
-        <td style="padding:10px 16px;border:1px solid #e5e7eb;color:#f59e0b;">${stats.idle}</td>
-      </tr>
-      <tr>
-        <td style="padding:10px 16px;border:1px solid #e5e7eb;font-weight:600;">Offline</td>
-        <td style="padding:10px 16px;border:1px solid #e5e7eb;color:#ef4444;">${stats.offline}</td>
-      </tr>
-      <tr style="background:#f9fafb;">
-        <td style="padding:10px 16px;border:1px solid #e5e7eb;font-weight:600;">Avg Productivity</td>
-        <td style="padding:10px 16px;border:1px solid #e5e7eb;"><strong>${stats.avgProductivity}%</strong></td>
-      </tr>
-      <tr>
-        <td style="padding:10px 16px;border:1px solid #e5e7eb;font-weight:600;">Alerts Today</td>
-        <td style="padding:10px 16px;border:1px solid #e5e7eb;color:#ef4444;">${stats.alertsToday}</td>
-      </tr>
-      ${
-        stats.topEmployee
-          ? `<tr style="background:#f9fafb;"><td style="padding:10px 16px;border:1px solid #e5e7eb;font-weight:600;">Top Performer</td><td style="padding:10px 16px;border:1px solid #e5e7eb;">${stats.topEmployee.name} (${stats.topEmployee.productivity}%)</td></tr>`
-          : ""
-      }
-    </table>
-  `;
+    <p style="color:#475569;margin:0 0 20px;font-size:14px;line-height:1.7;">Here is your daily workforce monitoring summary for <strong>${dateStr}</strong>.</p>
+    ${infoTable(
+      infoRow("Total Employees", String(stats.totalEmployees)) +
+      infoRow("Online Today", `<span style="color:#16a34a;font-weight:600;">${stats.online}</span>`, "#f8fafc") +
+      infoRow("Idle", `<span style="color:#d97706;font-weight:600;">${stats.idle}</span>`) +
+      infoRow("Offline", `<span style="color:#dc2626;font-weight:600;">${stats.offline}</span>`, "#f8fafc") +
+      infoRow("Avg Productivity", `<strong style="color:#6366f1;">${stats.avgProductivity}%</strong>`) +
+      infoRow("Alerts Today", `<span style="color:#dc2626;font-weight:600;">${stats.alertsToday}</span>`, "#f8fafc") +
+      (stats.topEmployee ? infoRow("Top Performer", `${stats.topEmployee.name} &mdash; <strong>${stats.topEmployee.productivity}%</strong>`) : "")
+    )}
+    ${ctaButton("View Full Report", DASHBOARD_URL)}`;
 
   try {
     await transporter.sendMail({
       from: FROM,
       to: to.join(", "),
-      subject: `Daily Workforce Summary — ${new Date().toLocaleDateString()} | ${COMPANY}`,
-      html: baseTemplate("Daily Workforce Summary", body),
+      subject: `Daily Summary — ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })} | ${BRAND}`,
+      html: baseTemplate({ title: "Daily Workforce Summary", subtitle: "Automated daily report", body }),
     });
     logger.info("Daily summary email sent");
   } catch (err) {
@@ -159,7 +218,7 @@ export async function sendDailySummaryEmail(
   }
 }
 
-// ─── Company Signup Emails ────────────────────────────────────────────────────
+// ─── Email Verification ───────────────────────────────────────────────────────
 
 export async function sendVerificationEmail(
   to: string,
@@ -169,34 +228,33 @@ export async function sendVerificationEmail(
   if (!process.env.SMTP_USER) return;
 
   const body = `
-    <p style="color:#6b7280;margin-bottom:24px;">
-      Hello <strong>${companyName}</strong>,<br><br>
-      Please click the button below to verify your email address.
+    <p style="color:#475569;margin:0 0 24px;font-size:14px;line-height:1.7;">
+      Hello <strong style="color:#0f172a;">${companyName}</strong>,<br><br>
+      Thanks for signing up! Please verify your email address to activate your account.
       This link will expire in <strong>24 hours</strong>.
     </p>
-    <div style="text-align:center;margin:32px 0;">
-      <a href="${verificationUrl}" class="btn" style="display:inline-block;background:#6366f1;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;">
-        Verify Email →
-      </a>
-    </div>
-    <p style="color:#9ca3af;font-size:12px;margin-top:24px;">
-      If the button doesn't work, copy and paste this link into your browser:<br>
-      <a href="${verificationUrl}" style="color:#6366f1;word-break:break-all;">${verificationUrl}</a>
-    </p>
-  `;
+    ${ctaButton("Verify Email Address", verificationUrl)}
+    ${fallbackLink(verificationUrl)}`;
 
   try {
     await transporter.sendMail({
       from: FROM,
       to,
-      subject: "Verify your email address — EmployeeMonitor",
-      html: baseTemplate("Email Verification", body),
+      subject: `Verify your email address — ${BRAND}`,
+      html: baseTemplate({
+        title: "Confirm your email",
+        subtitle: "Account verification",
+        accentColor: "#6366f1",
+        body,
+      }),
     });
     logger.info(`Verification email sent to ${to}`);
   } catch (err) {
     logger.error("Failed to send verification email:", err);
   }
 }
+
+// ─── Welcome Email ────────────────────────────────────────────────────────────
 
 export async function sendWelcomeEmail(
   to: string,
@@ -206,30 +264,34 @@ export async function sendWelcomeEmail(
   if (!process.env.SMTP_USER) return;
 
   const body = `
-    <p style="color:#6b7280;margin-bottom:24px;">
-      Hello <strong>${companyName}</strong>,<br><br>
-      Congratulations! Your account has been successfully verified.
-      Select a plan to start monitoring your employees.
+    <p style="color:#475569;margin:0 0 16px;font-size:14px;line-height:1.7;">
+      Welcome to ${BRAND}, <strong style="color:#0f172a;">${companyName}</strong>!
     </p>
-    <div style="text-align:center;margin:32px 0;">
-      <a href="${selectPlanUrl}" class="btn" style="display:inline-block;background:#6366f1;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;">
-        Select a Plan →
-      </a>
-    </div>
-  `;
+    ${alertBox("✅ Your email has been verified successfully. Choose a plan to start monitoring.", "success")}
+    <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 8px;">
+      Get started in minutes — pick the plan that fits your team size.
+    </p>
+    ${ctaButton("Choose a Plan", selectPlanUrl, "#16a34a")}`;
 
   try {
     await transporter.sendMail({
       from: FROM,
       to,
-      subject: "Welcome! Your account has been verified — EmployeeMonitor",
-      html: baseTemplate("Account Verified!", body),
+      subject: `Welcome to ${BRAND} — Your account is ready!`,
+      html: baseTemplate({
+        title: "Welcome aboard! 🎉",
+        subtitle: "Your account is verified",
+        accentColor: "#16a34a",
+        body,
+      }),
     });
     logger.info(`Welcome email sent to ${to}`);
   } catch (err) {
     logger.error("Failed to send welcome email:", err);
   }
 }
+
+// ─── Plan Confirmation ────────────────────────────────────────────────────────
 
 export async function sendPlanConfirmationEmail(
   to: string,
@@ -241,44 +303,39 @@ export async function sendPlanConfirmationEmail(
 ): Promise<void> {
   if (!process.env.SMTP_USER) return;
 
+  const dateStr = validUntil.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+
   const body = `
-    <p style="color:#6b7280;margin-bottom:24px;">
-      Hello <strong>${companyName}</strong>,<br><br>
-      Your plan has been successfully activated. Here are your subscription details:
+    <p style="color:#475569;margin:0 0 20px;font-size:14px;line-height:1.7;">
+      Hello <strong style="color:#0f172a;">${companyName}</strong>,<br><br>
+      Your subscription is now active. Here are your plan details:
     </p>
-    <table style="width:100%;border-collapse:collapse;margin:16px 0;">
-      <tr style="background:#f9fafb;">
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;color:#374151;">Plan</td>
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;color:#6b7280;">${planName}</td>
-      </tr>
-      <tr>
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;color:#374151;">Seats</td>
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;color:#6b7280;">${maxSeats === -1 ? "Unlimited" : maxSeats}</td>
-      </tr>
-      <tr style="background:#f9fafb;">
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;color:#374151;">Valid Until</td>
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;color:#6b7280;">${validUntil.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</td>
-      </tr>
-    </table>
-    <div style="text-align:center;margin:32px 0;">
-      <a href="${dashboardUrl}" class="btn" style="display:inline-block;background:#6366f1;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;">
-        Open Dashboard →
-      </a>
-    </div>
-  `;
+    ${infoTable(
+      infoRow("Plan", `<strong style="color:#6366f1;">${planName}</strong>`) +
+      infoRow("Seats", maxSeats === -1 ? "Unlimited" : String(maxSeats), "#f8fafc") +
+      infoRow("Valid Until", dateStr)
+    )}
+    ${ctaButton("Open Dashboard", dashboardUrl, "#6366f1")}`;
 
   try {
     await transporter.sendMail({
       from: FROM,
       to,
-      subject: `Your plan is active — ${planName} | EmployeeMonitor`,
-      html: baseTemplate("Plan Confirmation", body),
+      subject: `Your ${planName} plan is active — ${BRAND}`,
+      html: baseTemplate({
+        title: "Subscription Activated ✅",
+        subtitle: "Plan confirmation",
+        accentColor: "#6366f1",
+        body,
+      }),
     });
     logger.info(`Plan confirmation email sent to ${to}`);
   } catch (err) {
     logger.error("Failed to send plan confirmation email:", err);
   }
 }
+
+// ─── Password Reset ───────────────────────────────────────────────────────────
 
 export async function sendPasswordResetEmail(
   to: string,
@@ -288,37 +345,34 @@ export async function sendPasswordResetEmail(
   if (!process.env.SMTP_USER) return;
 
   const body = `
-    <p style="color:#6b7280;margin-bottom:24px;">
-      Hello <strong>${adminName}</strong>,<br><br>
-      We received a request to reset your password. Click the button below to set a new password.
-      This link will expire in <strong>1 hour</strong>.
+    <p style="color:#475569;margin:0 0 20px;font-size:14px;line-height:1.7;">
+      Hello <strong style="color:#0f172a;">${adminName}</strong>,<br><br>
+      We received a request to reset your password. Click the button below to set a new one.
+      This link expires in <strong>1 hour</strong>.
     </p>
-    <div style="text-align:center;margin:32px 0;">
-      <a href="${resetUrl}" class="btn" style="display:inline-block;background:#6366f1;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;">
-        Reset Password →
-      </a>
-    </div>
-    <p style="color:#9ca3af;font-size:13px;margin-top:24px;">
-      If you did not request a password reset, please ignore this email. Your password will not be changed.
-    </p>
-    <p style="color:#9ca3af;font-size:12px;">
-      If the button doesn't work, copy and paste this link into your browser:<br>
-      <a href="${resetUrl}" style="color:#6366f1;word-break:break-all;">${resetUrl}</a>
-    </p>
-  `;
+    ${alertBox("If you did not request a password reset, please ignore this email — your password will remain unchanged.", "warning")}
+    ${ctaButton("Reset My Password", resetUrl, "#f59e0b")}
+    ${fallbackLink(resetUrl)}`;
 
   try {
     await transporter.sendMail({
       from: FROM,
       to,
-      subject: "Password Reset Request — MonitorHub",
-      html: baseTemplate("Reset Your Password", body),
+      subject: `Reset your password — ${BRAND}`,
+      html: baseTemplate({
+        title: "Password Reset Request",
+        subtitle: "Security notification",
+        accentColor: "#f59e0b",
+        body,
+      }),
     });
     logger.info(`Password reset email sent to ${to}`);
   } catch (err) {
     logger.error("Failed to send password reset email:", err);
   }
 }
+
+// ─── Subscription Cancelled ───────────────────────────────────────────────────
 
 export async function sendCancellationEmail(
   to: string,
@@ -327,25 +381,23 @@ export async function sendCancellationEmail(
   if (!process.env.SMTP_USER) return;
 
   const body = `
-    <p style="color:#6b7280;margin-bottom:24px;">
-      Hello <strong>${companyName}</strong>,<br><br>
-      Your subscription has been cancelled. Your account access will be discontinued.
+    <p style="color:#475569;margin:0 0 20px;font-size:14px;line-height:1.7;">
+      Hello <strong style="color:#0f172a;">${companyName}</strong>,<br><br>
+      Your subscription has been cancelled and your dashboard access has been deactivated.
     </p>
-    <div class="alert-box">
-      If you believe this was a mistake or would like to reactivate your account,
-      please contact our support team immediately.
-    </div>
-    <p style="color:#6b7280;font-size:13px;margin-top:24px;">
-      Thank you for using ${COMPANY} Employee Monitor.
-    </p>
-  `;
+    ${alertBox("If you believe this was a mistake or would like to reactivate your account, please contact our support team.", "error")}`;
 
   try {
     await transporter.sendMail({
       from: FROM,
       to,
-      subject: `Your subscription has been cancelled — ${COMPANY}`,
-      html: baseTemplate("Subscription Cancelled", body),
+      subject: `Your subscription has been cancelled — ${BRAND}`,
+      html: baseTemplate({
+        title: "Subscription Cancelled",
+        subtitle: "Account update",
+        accentColor: "#ef4444",
+        body,
+      }),
     });
     logger.info(`Cancellation email sent to ${to}`);
   } catch (err) {
@@ -353,7 +405,7 @@ export async function sendCancellationEmail(
   }
 }
 
-// ─── Subscription Lifecycle Emails ───────────────────────────────────────────
+// ─── Expiry Warning ───────────────────────────────────────────────────────────
 
 export async function sendExpiryWarningEmail(
   to: string,
@@ -364,40 +416,36 @@ export async function sendExpiryWarningEmail(
 ): Promise<void> {
   if (!process.env.SMTP_USER) return;
 
-  const dateStr = expiryDate.toLocaleDateString("en-PK", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const dateStr = expiryDate.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 
   const body = `
-    <p style="color:#6b7280;margin-bottom:24px;">
-      Hello <strong>${companyName}</strong>,<br><br>
-      Your <strong>${planName}</strong> subscription will expire on <strong>${dateStr}</strong>.
-      Please renew now to maintain uninterrupted service.
+    <p style="color:#475569;margin:0 0 20px;font-size:14px;line-height:1.7;">
+      Hello <strong style="color:#0f172a;">${companyName}</strong>,<br><br>
+      Your <strong>${planName}</strong> subscription expires on <strong>${dateStr}</strong>.
+      Renew now to avoid any interruption to your monitoring service.
     </p>
-    <div class="alert-box medium">
-      ⚠️ Your subscription will expire in a few days. Dashboard access will be blocked after expiry.
-    </div>
-    <div style="text-align:center;margin:32px 0;">
-      <a href="${renewUrl}" class="btn" style="display:inline-block;background:#f59e0b;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;">
-        Renew Now →
-      </a>
-    </div>
-  `;
+    ${alertBox("⚠️ Dashboard access will be blocked after expiry. Renew before that date to keep your data uninterrupted.", "warning")}
+    ${ctaButton("Renew Subscription", renewUrl, "#f59e0b")}`;
 
   try {
     await transporter.sendMail({
       from: FROM,
       to,
-      subject: `⚠️ Subscription Expires on ${dateStr} — ${COMPANY}`,
-      html: baseTemplate("Subscription Expiry Warning", body),
+      subject: `⚠️ Your subscription expires on ${dateStr} — ${BRAND}`,
+      html: baseTemplate({
+        title: "Subscription Expiring Soon",
+        subtitle: "Renewal reminder",
+        accentColor: "#f59e0b",
+        body,
+      }),
     });
     logger.info(`Expiry warning email sent to ${to}`);
   } catch (err) {
     logger.error("Failed to send expiry warning email:", err);
   }
 }
+
+// ─── Subscription Expired ─────────────────────────────────────────────────────
 
 export async function sendExpiryNotificationEmail(
   to: string,
@@ -407,32 +455,32 @@ export async function sendExpiryNotificationEmail(
   if (!process.env.SMTP_USER) return;
 
   const body = `
-    <p style="color:#6b7280;margin-bottom:24px;">
-      Hello <strong>${companyName}</strong>,<br><br>
-      Your subscription has expired. Dashboard access has been blocked.
+    <p style="color:#475569;margin:0 0 20px;font-size:14px;line-height:1.7;">
+      Hello <strong style="color:#0f172a;">${companyName}</strong>,<br><br>
+      Your subscription has expired and dashboard access has been suspended.
     </p>
-    <div class="alert-box">
-      Please renew your subscription to resume service.
-    </div>
-    <div style="text-align:center;margin:32px 0;">
-      <a href="${renewUrl}" class="btn" style="display:inline-block;background:#ef4444;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;">
-        Renew Now →
-      </a>
-    </div>
-  `;
+    ${alertBox("🔴 Your account is currently inactive. Renew your subscription to restore access.", "error")}
+    ${ctaButton("Renew Now", renewUrl, "#ef4444")}`;
 
   try {
     await transporter.sendMail({
       from: FROM,
       to,
-      subject: `Your Subscription Has Expired — ${COMPANY}`,
-      html: baseTemplate("Subscription Expired", body),
+      subject: `Your subscription has expired — ${BRAND}`,
+      html: baseTemplate({
+        title: "Subscription Expired",
+        subtitle: "Action required",
+        accentColor: "#ef4444",
+        body,
+      }),
     });
     logger.info(`Expiry notification email sent to ${to}`);
   } catch (err) {
     logger.error("Failed to send expiry notification email:", err);
   }
 }
+
+// ─── Plan Upgrade ─────────────────────────────────────────────────────────────
 
 export async function sendUpgradeConfirmationEmail(
   to: string,
@@ -444,40 +492,35 @@ export async function sendUpgradeConfirmationEmail(
   if (!process.env.SMTP_USER) return;
 
   const body = `
-    <p style="color:#6b7280;margin-bottom:24px;">
-      Hello <strong>${companyName}</strong>,<br><br>
-      Aapka plan successfully upgrade ho gaya hai!
+    <p style="color:#475569;margin:0 0 20px;font-size:14px;line-height:1.7;">
+      Hello <strong style="color:#0f172a;">${companyName}</strong>,<br><br>
+      Your plan has been upgraded successfully. You now have access to all features included in your new plan.
     </p>
-    <table style="width:100%;border-collapse:collapse;margin:16px 0;">
-      <tr style="background:#f9fafb;">
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;color:#374151;">Previous Plan</td>
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;color:#6b7280;">${oldPlanName}</td>
-      </tr>
-      <tr>
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;color:#374151;">New Plan</td>
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;color:#10b981;font-weight:600;">${newPlanName}</td>
-      </tr>
-    </table>
-    <p style="color:#6b7280;">New features are now available. Go to your dashboard to start using them.</p>
-    <div style="text-align:center;margin:32px 0;">
-      <a href="${dashboardUrl}" class="btn" style="display:inline-block;background:#10b981;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;">
-        View Dashboard →
-      </a>
-    </div>
-  `;
+    ${infoTable(
+      infoRow("Previous Plan", oldPlanName) +
+      infoRow("New Plan", `<strong style="color:#16a34a;">${newPlanName}</strong>`, "#f0fdf4")
+    )}
+    ${ctaButton("Explore New Features", dashboardUrl, "#16a34a")}`;
 
   try {
     await transporter.sendMail({
       from: FROM,
       to,
-      subject: `Plan upgrade successful — ${newPlanName} | ${COMPANY}`,
-      html: baseTemplate("Plan Upgrade Confirmed ✅", body),
+      subject: `Plan upgraded to ${newPlanName} — ${BRAND}`,
+      html: baseTemplate({
+        title: "Plan Upgraded ✅",
+        subtitle: "Subscription update",
+        accentColor: "#16a34a",
+        body,
+      }),
     });
     logger.info(`Upgrade confirmation email sent to ${to}`);
   } catch (err) {
     logger.error("Failed to send upgrade confirmation email:", err);
   }
 }
+
+// ─── Plan Downgrade ───────────────────────────────────────────────────────────
 
 export async function sendDowngradeConfirmationEmail(
   to: string,
@@ -489,33 +532,27 @@ export async function sendDowngradeConfirmationEmail(
   if (!process.env.SMTP_USER) return;
 
   const body = `
-    <p style="color:#6b7280;margin-bottom:24px;">
-      Hello <strong>${companyName}</strong>,<br><br>
-      Aapka plan change ho gaya hai.
+    <p style="color:#475569;margin:0 0 20px;font-size:14px;line-height:1.7;">
+      Hello <strong style="color:#0f172a;">${companyName}</strong>,<br><br>
+      Your subscription plan has been changed. Some features may no longer be available.
     </p>
-    <table style="width:100%;border-collapse:collapse;margin:16px 0;">
-      <tr style="background:#f9fafb;">
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;color:#374151;">Previous Plan</td>
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;color:#6b7280;">${oldPlanName}</td>
-      </tr>
-      <tr>
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;color:#374151;">New Plan</td>
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;color:#374151;">${newPlanName}</td>
-      </tr>
-    </table>
-    <div style="text-align:center;margin:32px 0;">
-      <a href="${dashboardUrl}" class="btn" style="display:inline-block;background:#6366f1;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;">
-        View Dashboard →
-      </a>
-    </div>
-  `;
+    ${infoTable(
+      infoRow("Previous Plan", oldPlanName) +
+      infoRow("New Plan", `<strong>${newPlanName}</strong>`, "#f8fafc")
+    )}
+    ${ctaButton("View Dashboard", dashboardUrl)}`;
 
   try {
     await transporter.sendMail({
       from: FROM,
       to,
-      subject: `Plan downgrade successful — ${newPlanName} | ${COMPANY}`,
-      html: baseTemplate("Plan Change Confirmed", body),
+      subject: `Your plan has been changed to ${newPlanName} — ${BRAND}`,
+      html: baseTemplate({
+        title: "Plan Changed",
+        subtitle: "Subscription update",
+        accentColor: "#6366f1",
+        body,
+      }),
     });
     logger.info(`Downgrade confirmation email sent to ${to}`);
   } catch (err) {
@@ -523,7 +560,7 @@ export async function sendDowngradeConfirmationEmail(
   }
 }
 
-// ─── Offline Payment Emails ───────────────────────────────────────────────────
+// ─── Invoice Created ──────────────────────────────────────────────────────────
 
 export async function sendInvoiceCreatedEmail(
   to: string,
@@ -544,67 +581,46 @@ export async function sendInvoiceCreatedEmail(
 
   const amountStr = amount.toLocaleString("en-PK");
 
+  const paymentRows = [
+    paymentSettings.easypaisaNumber ? infoRow("Easypaisa", paymentSettings.easypaisaNumber, "#fffbeb") : "",
+    paymentSettings.nayapayNumber   ? infoRow("NayaPay",   paymentSettings.nayapayNumber)              : "",
+    paymentSettings.bankIban        ? infoRow("Bank IBAN", `${paymentSettings.bankIban}<br>${paymentSettings.bankTitle}`, "#f8fafc") : "",
+  ].join("");
+
   const body = `
-    <p style="color:#6b7280;margin-bottom:24px;">
-      Hello <strong>${companyName}</strong>,<br><br>
-      Your invoice has been generated. Please make payment using one of the methods below.
+    <p style="color:#475569;margin:0 0 20px;font-size:14px;line-height:1.7;">
+      Hello <strong style="color:#0f172a;">${companyName}</strong>,<br><br>
+      An invoice has been generated for your subscription. Please complete payment using one of the methods below.
     </p>
-    <table style="width:100%;border-collapse:collapse;margin:16px 0;">
-      <tr style="background:#f9fafb;">
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;color:#374151;">Invoice #</td>
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;color:#6366f1;font-weight:600;">${invoiceNumber}</td>
-      </tr>
-      <tr>
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;color:#374151;">Plan</td>
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;color:#6b7280;">${planName}</td>
-      </tr>
-      <tr style="background:#f9fafb;">
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;color:#374151;">Amount</td>
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;color:#374151;font-size:18px;font-weight:700;">PKR ${amountStr}</td>
-      </tr>
-    </table>
-    <h3 style="color:#374151;margin-top:24px;">Payment Methods:</h3>
-    <table style="width:100%;border-collapse:collapse;margin:8px 0 16px;">
-      ${paymentSettings.easypaisaNumber ? `
-      <tr style="background:#fef3c7;">
-        <td style="padding:10px 16px;border:1px solid #e5e7eb;font-weight:600;color:#374151;">Easypaisa</td>
-        <td style="padding:10px 16px;border:1px solid #e5e7eb;color:#6b7280;">${paymentSettings.easypaisaNumber}</td>
-      </tr>` : ""}
-      ${paymentSettings.nayapayNumber ? `
-      <tr>
-        <td style="padding:10px 16px;border:1px solid #e5e7eb;font-weight:600;color:#374151;">NayaPay</td>
-        <td style="padding:10px 16px;border:1px solid #e5e7eb;color:#6b7280;">${paymentSettings.nayapayNumber}</td>
-      </tr>` : ""}
-      ${paymentSettings.bankIban ? `
-      <tr style="background:#f9fafb;">
-        <td style="padding:10px 16px;border:1px solid #e5e7eb;font-weight:600;color:#374151;">Bank Transfer</td>
-        <td style="padding:10px 16px;border:1px solid #e5e7eb;color:#6b7280;">IBAN: ${paymentSettings.bankIban}<br>${paymentSettings.bankTitle}</td>
-      </tr>` : ""}
-    </table>
-    ${paymentSettings.whatsappNumber ? `
-    <div class="alert-box medium" style="background:#fef3c7;border-color:#f59e0b;">
-      <strong>After Payment:</strong><br>
-      Please send the payment screenshot and Invoice ID to: <strong>${paymentSettings.whatsappNumber}</strong> on WhatsApp
-    </div>` : ""}
-    <div style="text-align:center;margin:32px 0;">
-      <a href="${invoiceUrl}" class="btn" style="display:inline-block;background:#6366f1;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;">
-        View Invoice →
-      </a>
-    </div>
-  `;
+    ${infoTable(
+      infoRow("Invoice #", `<strong style="color:#6366f1;">${invoiceNumber}</strong>`) +
+      infoRow("Plan", planName, "#f8fafc") +
+      infoRow("Amount", `<strong style="font-size:18px;color:#0f172a;">PKR ${amountStr}</strong>`)
+    )}
+    <h3 style="color:#0f172a;margin:24px 0 8px;font-size:15px;">Payment Methods</h3>
+    ${infoTable(paymentRows)}
+    ${paymentSettings.whatsappNumber ? alertBox(`After payment, please send your receipt and Invoice ID <strong>${invoiceNumber}</strong> to <strong>${paymentSettings.whatsappNumber}</strong> on WhatsApp.`, "info") : ""}
+    ${ctaButton("View Invoice", invoiceUrl)}`;
 
   try {
     await transporter.sendMail({
       from: FROM,
       to,
-      subject: `Invoice ${invoiceNumber} — Payment Details | ${COMPANY}`,
-      html: baseTemplate(`Invoice ${invoiceNumber}`, body),
+      subject: `Invoice ${invoiceNumber} — Payment Required | ${BRAND}`,
+      html: baseTemplate({
+        title: `Invoice ${invoiceNumber}`,
+        subtitle: "Payment request",
+        accentColor: "#6366f1",
+        body,
+      }),
     });
     logger.info(`Invoice created email sent to ${to} for ${invoiceNumber}`);
   } catch (err) {
     logger.error("Failed to send invoice created email:", err);
   }
 }
+
+// ─── Payment Screenshot Received ─────────────────────────────────────────────
 
 export async function sendScreenshotUploadConfirmationEmail(
   to: string,
@@ -615,32 +631,33 @@ export async function sendScreenshotUploadConfirmationEmail(
   if (!process.env.SMTP_USER) return;
 
   const body = `
-    <p style="color:#6b7280;margin-bottom:24px;">
-      Hello <strong>${companyName}</strong>,<br><br>
-      We have received your payment screenshot. We will verify it within <strong>24 hours</strong>.
+    <p style="color:#475569;margin:0 0 20px;font-size:14px;line-height:1.7;">
+      Hello <strong style="color:#0f172a;">${companyName}</strong>,<br><br>
+      We have received your payment screenshot for invoice <strong>${invoiceNumber}</strong>.
+      Our team will verify it within <strong>24 hours</strong>.
     </p>
-    <div class="alert-box low">
-      Invoice ID: <strong>${invoiceNumber}</strong> — Verification is pending.
-    </div>
-    <div style="text-align:center;margin:32px 0;">
-      <a href="${invoiceUrl}" class="btn" style="display:inline-block;background:#6366f1;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;">
-        Check Status →
-      </a>
-    </div>
-  `;
+    ${alertBox("⏳ Payment verification is pending. You will receive a confirmation email once it is approved.", "info")}
+    ${ctaButton("Check Invoice Status", invoiceUrl)}`;
 
   try {
     await transporter.sendMail({
       from: FROM,
       to,
-      subject: `Payment Screenshot Received — ${invoiceNumber} | ${COMPANY}`,
-      html: baseTemplate("Payment Screenshot Received", body),
+      subject: `Payment screenshot received — ${invoiceNumber} | ${BRAND}`,
+      html: baseTemplate({
+        title: "Payment Screenshot Received",
+        subtitle: "Payment verification pending",
+        accentColor: "#6366f1",
+        body,
+      }),
     });
     logger.info(`Screenshot upload confirmation email sent to ${to}`);
   } catch (err) {
     logger.error("Failed to send screenshot upload confirmation email:", err);
   }
 }
+
+// ─── Payment Approved ─────────────────────────────────────────────────────────
 
 export async function sendPaymentApprovedEmail(
   to: string,
@@ -651,46 +668,38 @@ export async function sendPaymentApprovedEmail(
 ): Promise<void> {
   if (!process.env.SMTP_USER) return;
 
-  const dateStr = validUntil.toLocaleDateString("en-PK", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const dateStr = validUntil.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 
   const body = `
-    <p style="color:#6b7280;margin-bottom:24px;">
-      Congratulations, <strong>${companyName}</strong>!<br><br>
-      Your payment has been verified. Your subscription is now active.
+    <p style="color:#475569;margin:0 0 20px;font-size:14px;line-height:1.7;">
+      Great news, <strong style="color:#0f172a;">${companyName}</strong>!<br><br>
+      Your payment has been verified and your subscription is now active.
     </p>
-    <table style="width:100%;border-collapse:collapse;margin:16px 0;">
-      <tr style="background:#f0fdf4;">
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;color:#374151;">Plan</td>
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;color:#10b981;font-weight:600;">${planName}</td>
-      </tr>
-      <tr>
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;color:#374151;">Valid Until</td>
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;color:#6b7280;">${dateStr}</td>
-      </tr>
-    </table>
-    <div style="text-align:center;margin:32px 0;">
-      <a href="${dashboardUrl}" class="btn" style="display:inline-block;background:#10b981;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;">
-        Open Dashboard →
-      </a>
-    </div>
-  `;
+    ${infoTable(
+      infoRow("Plan", `<strong style="color:#16a34a;">${planName}</strong>`) +
+      infoRow("Valid Until", dateStr, "#f0fdf4")
+    )}
+    ${ctaButton("Open Dashboard", dashboardUrl, "#16a34a")}`;
 
   try {
     await transporter.sendMail({
       from: FROM,
       to,
-      subject: `✅ Payment Verified — Your Subscription is Active | ${COMPANY}`,
-      html: baseTemplate("Payment Verified ✅", body),
+      subject: `✅ Payment verified — Subscription active | ${BRAND}`,
+      html: baseTemplate({
+        title: "Payment Verified ✅",
+        subtitle: "Your subscription is now active",
+        accentColor: "#16a34a",
+        body,
+      }),
     });
     logger.info(`Payment approved email sent to ${to}`);
   } catch (err) {
     logger.error("Failed to send payment approved email:", err);
   }
 }
+
+// ─── Payment Rejected ─────────────────────────────────────────────────────────
 
 export async function sendPaymentRejectedEmail(
   to: string,
@@ -701,29 +710,27 @@ export async function sendPaymentRejectedEmail(
   if (!process.env.SMTP_USER) return;
 
   const body = `
-    <p style="color:#6b7280;margin-bottom:24px;">
-      Hello <strong>${companyName}</strong>,<br><br>
-      Unfortunately, we could not verify your payment.
+    <p style="color:#475569;margin:0 0 20px;font-size:14px;line-height:1.7;">
+      Hello <strong style="color:#0f172a;">${companyName}</strong>,<br><br>
+      Unfortunately, we were unable to verify your payment.
     </p>
-    <div class="alert-box">
-      <strong>Reason:</strong> ${rejectionReason}
-    </div>
-    <p style="color:#6b7280;margin-top:16px;">
-      Please make the payment again and send us the screenshot.
+    ${alertBox(`<strong>Reason:</strong> ${rejectionReason}`, "error")}
+    <p style="color:#475569;font-size:14px;line-height:1.7;margin:8px 0;">
+      Please make the payment again and send us the screenshot. Contact support if you need assistance.
     </p>
-    <div style="text-align:center;margin:32px 0;">
-      <a href="${invoiceUrl}" class="btn" style="display:inline-block;background:#ef4444;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;">
-        View Invoice →
-      </a>
-    </div>
-  `;
+    ${ctaButton("View Invoice", invoiceUrl, "#ef4444")}`;
 
   try {
     await transporter.sendMail({
       from: FROM,
       to,
-      subject: `❌ Payment Could Not Be Verified — ${COMPANY}`,
-      html: baseTemplate("Payment Rejected ❌", body),
+      subject: `❌ Payment could not be verified — ${BRAND}`,
+      html: baseTemplate({
+        title: "Payment Rejected",
+        subtitle: "Action required",
+        accentColor: "#ef4444",
+        body,
+      }),
     });
     logger.info(`Payment rejected email sent to ${to}`);
   } catch (err) {
@@ -731,7 +738,7 @@ export async function sendPaymentRejectedEmail(
   }
 }
 
-// ─── Master Admin Notification Emails ────────────────────────────────────────
+// ─── Admin: New Signup Notification ──────────────────────────────────────────
 
 export async function sendAdminNewSignupNotification(
   to: string,
@@ -742,42 +749,35 @@ export async function sendAdminNewSignupNotification(
   if (!process.env.SMTP_USER) return;
 
   const body = `
-    <p style="color:#6b7280;margin-bottom:24px;">
-      A new company has just signed up on <strong>${COMPANY}</strong>.
+    <p style="color:#475569;margin:0 0 20px;font-size:14px;line-height:1.7;">
+      A new company has just signed up on <strong>${BRAND}</strong>.
     </p>
-    <table style="width:100%;border-collapse:collapse;margin:16px 0;">
-      <tr style="background:#f9fafb;">
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;color:#374151;">Company</td>
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;color:#6b7280;">${companyName}</td>
-      </tr>
-      <tr>
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;color:#374151;">Email</td>
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;color:#6b7280;">${companyEmail}</td>
-      </tr>
-      <tr style="background:#f9fafb;">
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;color:#374151;">Time</td>
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;color:#6b7280;">${new Date().toLocaleString()}</td>
-      </tr>
-    </table>
-    <div style="text-align:center;margin:32px 0;">
-      <a href="${adminUrl}/admin/customers" style="display:inline-block;background:#6366f1;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;">
-        View in Admin Panel →
-      </a>
-    </div>
-  `;
+    ${infoTable(
+      infoRow("Company", companyName) +
+      infoRow("Email", companyEmail, "#f8fafc") +
+      infoRow("Signed up", new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }))
+    )}
+    ${ctaButton("View in Admin Panel", `${adminUrl}/admin/customers`)}`;
 
   try {
     await transporter.sendMail({
       from: FROM,
       to,
-      subject: `🆕 New Signup: ${companyName} — ${COMPANY}`,
-      html: baseTemplate("New Company Signup", body),
+      subject: `🆕 New signup: ${companyName} — ${BRAND}`,
+      html: baseTemplate({
+        title: "New Company Signup",
+        subtitle: "Admin notification",
+        accentColor: "#6366f1",
+        body,
+      }),
     });
     logger.info(`Admin new signup notification sent for ${companyName}`);
   } catch (err) {
     logger.error("Failed to send admin new signup notification:", err);
   }
 }
+
+// ─── Admin: New Invoice Notification ─────────────────────────────────────────
 
 export async function sendAdminNewInvoiceNotification(
   to: string,
@@ -793,49 +793,37 @@ export async function sendAdminNewInvoiceNotification(
   const amountStr = amount.toLocaleString("en-PK");
 
   const body = `
-    <p style="color:#6b7280;margin-bottom:24px;">
-      A new payment invoice has been created and is awaiting your approval.
+    <p style="color:#475569;margin:0 0 20px;font-size:14px;line-height:1.7;">
+      A new payment invoice is awaiting your review and approval.
     </p>
-    <table style="width:100%;border-collapse:collapse;margin:16px 0;">
-      <tr style="background:#fef3c7;">
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;color:#374151;">Invoice #</td>
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;color:#d97706;font-weight:700;">${invoiceNumber}</td>
-      </tr>
-      <tr>
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;color:#374151;">Company</td>
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;color:#6b7280;">${companyName} (${companyEmail})</td>
-      </tr>
-      <tr style="background:#f9fafb;">
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;color:#374151;">Plan</td>
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;color:#6b7280;">${planName}</td>
-      </tr>
-      <tr>
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;font-weight:600;color:#374151;">Amount</td>
-        <td style="padding:12px 16px;border:1px solid #e5e7eb;color:#374151;font-size:18px;font-weight:700;">PKR ${amountStr}</td>
-      </tr>
-    </table>
-    <div class="alert-box medium">
-      ⏳ This invoice is pending approval. Please review and approve or reject it.
-    </div>
-    <div style="text-align:center;margin:32px 0;">
-      <a href="${adminUrl}/admin/invoices" style="display:inline-block;background:#f59e0b;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;">
-        Review Invoice →
-      </a>
-    </div>
-  `;
+    ${infoTable(
+      infoRow("Invoice #", `<strong style="color:#d97706;">${invoiceNumber}</strong>`, "#fffbeb") +
+      infoRow("Company", `${companyName} (${companyEmail})`) +
+      infoRow("Plan", planName, "#f8fafc") +
+      infoRow("Amount", `<strong style="font-size:18px;color:#0f172a;">PKR ${amountStr}</strong>`)
+    )}
+    ${alertBox("⏳ This invoice is awaiting your approval. Please review it promptly.", "warning")}
+    ${ctaButton("Review Invoice", `${adminUrl}/admin/invoices`, "#f59e0b")}`;
 
   try {
     await transporter.sendMail({
       from: FROM,
       to,
-      subject: `💰 New Invoice ${invoiceNumber} — PKR ${amountStr} | ${COMPANY}`,
-      html: baseTemplate(`New Invoice: ${invoiceNumber}`, body),
+      subject: `💰 New invoice ${invoiceNumber} — PKR ${amountStr} | ${BRAND}`,
+      html: baseTemplate({
+        title: `New Invoice: ${invoiceNumber}`,
+        subtitle: "Admin notification",
+        accentColor: "#f59e0b",
+        body,
+      }),
     });
     logger.info(`Admin new invoice notification sent for ${invoiceNumber}`);
   } catch (err) {
     logger.error("Failed to send admin new invoice notification:", err);
   }
 }
+
+// ─── SMTP Health Check ────────────────────────────────────────────────────────
 
 export async function verifyEmailConfig(): Promise<boolean> {
   try {

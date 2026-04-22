@@ -110,7 +110,7 @@ if (!existsSync(paymentUploadsDir)) mkdirSync(paymentUploadsDir, { recursive: tr
 // ── Global Rate Limiting (dashboard routes) ───────────────────────────────────
 const globalLimit = rateLimit({
   windowMs: 60 * 1000,
-  max: 200,
+  max: 600,  // raised from 200 — dashboard pages make many parallel calls on load
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many requests, please try again later" },
