@@ -310,6 +310,67 @@ export function BillingPage() {
               </button>
             </div>
           </div>
+
+          {/* Pay Offline */}
+          <div className="rounded-xl overflow-hidden border border-border shadow-sm">
+            <div className="bg-[#4f46e5] px-6 py-4">
+              <h3 className="text-white font-bold text-base tracking-wide uppercase">Pay Offline — Any Method</h3>
+            </div>
+            <div className="bg-card p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                {/* Meezan Bank */}
+                <div className="flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30">
+                  <span className="text-2xl">🏦</span>
+                  <div>
+                    <p className="font-semibold text-sm">Meezan Bank</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">IBAN: PK94MEZN0002090104829768</p>
+                    <p className="text-xs text-muted-foreground">Arham Ejaz</p>
+                  </div>
+                </div>
+                {/* NayaPay */}
+                <div className="flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30">
+                  <span className="text-2xl">💙</span>
+                  <div>
+                    <p className="font-semibold text-sm">NayaPay</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">03077428886</p>
+                    <p className="text-xs text-muted-foreground">Arham Ejaz</p>
+                  </div>
+                </div>
+                {/* SadaPay */}
+                <div className="flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30">
+                  <span className="text-2xl">💜</span>
+                  <div>
+                    <p className="font-semibold text-sm">SadaPay</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">03077428886</p>
+                    <p className="text-xs text-muted-foreground">Arham Ejaz</p>
+                  </div>
+                </div>
+                {/* Easypaisa */}
+                <div className="flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30">
+                  <span className="text-2xl">📱</span>
+                  <div>
+                    <p className="font-semibold text-sm">Easypaisa</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">03077428886</p>
+                    <p className="text-xs text-muted-foreground">Arham Ejaz</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* After payment instructions */}
+              <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 p-4 space-y-3">
+                <p className="font-semibold text-amber-800 dark:text-amber-200 text-sm">After payment:</p>
+                <ol className="list-decimal list-inside space-y-1 text-sm text-amber-700 dark:text-amber-300">
+                  <li>Send screenshot + Invoice ID via WhatsApp</li>
+                  <li>For bank transfers, also include your account name</li>
+                </ol>
+                <hr className="border-amber-200 dark:border-amber-700" />
+                <div className="space-y-1 text-sm text-amber-800 dark:text-amber-200">
+                  <p><span className="font-semibold">WhatsApp:</span> <span className="font-mono">00923077428886</span></p>
+                  <p><span className="font-semibold">Amount:</span> {price > 0 ? `PKR ${price.toLocaleString("en-PK", { maximumFractionDigits: 0 })}` : "Contact support"}</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Right column */}
