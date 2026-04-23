@@ -145,11 +145,10 @@ export function DashboardPage() {
                   data={topApps}
                   cx="50%"
                   cy="50%"
+                  innerRadius={55}
                   outerRadius={90}
                   dataKey="value"
-                  label={({ name, percent }) => `${name} ${Math.round((percent || 0) * 100)}%`}
-                  labelLine={false}
-                  style={{ fontSize: "11px" }}
+                  paddingAngle={2}
                 >
                   {topApps.map((entry, i) => (
                     <Cell key={i} fill={entry.fill} />
@@ -157,6 +156,16 @@ export function DashboardPage() {
                 </Pie>
                 <RTooltip
                   contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: "8px" }}
+                  formatter={(value: number, name: string) => [`${value}%`, name]}
+                />
+                <Legend
+                  iconType="circle"
+                  iconSize={8}
+                  formatter={(value, entry: any) => (
+                    <span style={{ fontSize: "12px", color: "var(--foreground)" }}>
+                      {value} {entry.payload?.value}%
+                    </span>
+                  )}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -221,7 +230,7 @@ export function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <ScrollArea className="h-[400px]">
+            <div className="h-[400px] overflow-y-auto">
               <div className="px-4 pb-4 space-y-2">
                 <AnimatePresence initial={false}>
                   {latestActivities.length > 0 ? latestActivities.slice(0, 20).map((act, i) => (
@@ -262,7 +271,7 @@ export function DashboardPage() {
                   )}
                 </AnimatePresence>
               </div>
-            </ScrollArea>
+            </div>
           </CardContent>
         </Card>
 
