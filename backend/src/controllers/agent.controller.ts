@@ -213,11 +213,8 @@ export async function heartbeat(
     broadcast("employee-online", { employeeId: emp.id });
 
     // ── Alert checks ────────────────────────────────────────────────────────
-
-    // 1. Blocked site check (window title heuristic)
-    if (settings.alertOnBlockedSite && settings.blockedSites.length > 0) {
-      await checkBlockedSite(emp.id, windowTitle, settings.blockedSites);
-    }
+    // Note: blocked site alerts are fired from browser history (real URLs only),
+    // not from window titles — window title matching causes too many false positives.
 
     // 2. After-hours check
     if (settings.afterHoursEnabled && settings.alertOnAfterHours && isAfterHours && !isIdle) {
@@ -376,28 +373,46 @@ export async function saveBrowserHistory(
 
     const blockedSites = settings?.blockedSites || [];
 
-    const data = history.slice(0, 200).map((item) => {
-      const isBlocked = blockedSites.some((site) =>
-        item.url.toLowerCase().includes(site.toLowerCase())
-      );
-      return {
-        employeeId: emp.id,
-        browser: item.browser,
-        url: item.url.substring(0, 2000),
-        title: item.title.substring(0, 500),
-        visitedAt: new Date(item.visitedAt),
-        duration: item.duration || null,
-        isBlocked,
-      };
-    });
+    // Domain-aware blocked check: match hostname exactly or as subdomain
+    const isUrlBlocked = (url: string): boolean => {
+      if (!blockedSites.length) return false;
+      let hostname = url.toLowerCase();
+      try { hostname = new URL(url).hostname.toLowerCase(); } catch { /* use raw */ }
+      return blockedSites.some((site) => {
+        const s = site.toLowerCase().replace(/^https?:\/\//, "").split("/")[0];
+        return hostname === s || hostname.endsWith(`.${s}`);
+      });
+    };
 
-    await prisma.browserHistory.createMany({ data, skipDuplicates: false });
+    const data = history.slice(0, 200).map((item) => ({
+      employeeId: emp.id,
+      browser: item.browser,
+      url: item.url.substring(0, 2000),
+      title: item.title.substring(0, 500),
+      visitedAt: new Date(item.visitedAt),
+      duration: item.duration || null,
+      isBlocked: isUrlBlocked(item.url),
+    }));
 
-    // Create alerts for blocked URLs
+    await prisma.browserHistory.createMany({ data, skipDuplicates: true });
+
+    // Alert only for blocked URLs — deduplicate: skip if same employee+hostname alerted in last 10 min
     const blockedEntries = data.filter((d) => d.isBlocked);
+    const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000);
     for (const entry of blockedEntries.slice(0, 5)) {
       let hostname = entry.url;
-      try { hostname = new URL(entry.url).hostname; } catch { /* keep raw url */ }
+      try { hostname = new URL(entry.url).hostname; } catch { /* keep raw */ }
+
+      const recentAlert = await prisma.alert.findFirst({
+        where: {
+          employeeId: emp.id,
+          type: "blocked_site",
+          message: { contains: hostname },
+          createdAt: { gte: tenMinAgo },
+        },
+      });
+      if (recentAlert) continue; // already alerted recently for this site
+
       await createAlert({
         employeeId: emp.id,
         type: "blocked_site",
