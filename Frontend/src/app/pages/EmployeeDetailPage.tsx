@@ -1057,7 +1057,7 @@ export function EmployeeDetailPage() {
           ref={dialogContentRef}
           className={
             isDialogFullscreen
-              ? "fixed inset-0 max-w-none w-screen h-screen rounded-none border-none bg-black flex flex-col p-0"
+              ? "!fixed !inset-0 !top-0 !left-0 !translate-x-0 !translate-y-0 !max-w-none !w-screen !h-screen !rounded-none !border-none !bg-black !flex !flex-col !p-0 !gap-0"
               : "max-w-5xl"
           }
         >
