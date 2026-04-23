@@ -408,7 +408,7 @@ export async function saveBrowserHistory(
           employeeId: emp.id,
           type: "blocked_site",
           message: { contains: hostname },
-          createdAt: { gte: tenMinAgo },
+          timestamp: { gte: tenMinAgo },
         },
       });
       if (recentAlert) continue; // already alerted recently for this site
