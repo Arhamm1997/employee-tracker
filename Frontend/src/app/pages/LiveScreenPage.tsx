@@ -26,10 +26,12 @@ export function LiveScreenPage() {
   const [viewState, setViewState] = useState<"connecting" | "connected" | "error">("connecting");
   const [error, setError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const autoRetryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Fullscreen toggle
   const toggleFullscreen = useCallback(() => {
@@ -115,8 +117,24 @@ export function LiveScreenPage() {
       pc.onconnectionstatechange = () => {
         if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
           if (iceTimer) { clearTimeout(iceTimer); iceTimer = null; }
-          setViewState("error");
-          setError("WebRTC connection lost. Retry to reconnect.");
+          // Auto-retry up to 5 times before showing error
+          setRetryCount((prev) => {
+            const next = prev + 1;
+            if (next <= 5) {
+              setViewState("connecting");
+              setError(null);
+              autoRetryTimer.current = setTimeout(() => {
+                sendWsMessage("webrtc:request", { employeeId: id });
+              }, 2000);
+            } else {
+              setViewState("error");
+              setError("WebRTC connection lost after multiple retries. Check agent status.");
+            }
+            return next;
+          });
+        }
+        if (pc.connectionState === "connected") {
+          setRetryCount(0);
         }
       };
 
@@ -124,6 +142,20 @@ export function LiveScreenPage() {
         await pc.setRemoteDescription(new RTCSessionDescription(sdp));
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
+
+        // Boost video bitrate to 4 Mbps for higher quality
+        const senders = pc.getSenders();
+        for (const sender of senders) {
+          if (sender.track?.kind === "video") {
+            const params = sender.getParameters();
+            if (!params.encodings || params.encodings.length === 0) {
+              params.encodings = [{}];
+            }
+            params.encodings[0].maxBitrate = 4_000_000;
+            params.encodings[0].maxFramerate = 20;
+            sender.setParameters(params).catch(() => {});
+          }
+        }
 
         await new Promise<void>((resolve) => {
           if (pc.iceGatheringState === "complete") { resolve(); return; }
@@ -179,6 +211,7 @@ export function LiveScreenPage() {
       clearTimeout(startDelay);
       if (offerTimer) clearTimeout(offerTimer);
       if (iceTimer) clearTimeout(iceTimer);
+      if (autoRetryTimer.current) clearTimeout(autoRetryTimer.current);
       unsubs.forEach((u) => u());
       if (pcRef.current) {
         pcRef.current.close();
@@ -248,6 +281,7 @@ export function LiveScreenPage() {
             <button
               className="mt-4 px-4 py-1.5 text-xs rounded border border-white/20 hover:bg-white/10 transition-colors text-white"
               onClick={() => {
+                setRetryCount(0);
                 setViewState("connecting");
                 setError(null);
                 sendWsMessage("webrtc:request", { employeeId: id });

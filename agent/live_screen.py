@@ -34,28 +34,73 @@ except ImportError:
     log.warning("Install with: pip install websockets")
 
 try:
-    from PIL import ImageGrab
+    from PIL import ImageGrab, ImageDraw
     PIL_OK = True
 except ImportError:
     PIL_OK = False
 
+try:
+    import win32api
+    import win32con
+    import win32gui
+    WIN32_OK = True
+except ImportError:
+    WIN32_OK = False
+
 AVAILABLE = AIORTC_OK and WS_LIB_OK and PIL_OK
+
+_TARGET_FPS = 20
+_FRAME_INTERVAL = 1.0 / _TARGET_FPS
+
+
+def _draw_cursor(img):
+    """Overlay the Windows mouse cursor onto a PIL image."""
+    if not WIN32_OK:
+        return img
+    try:
+        cursor_info = win32gui.GetCursorInfo()
+        flags, _hcursor, (cx, cy) = cursor_info
+        if flags == 0:
+            return img
+        # Scale cursor coords if image was downscaled
+        draw = ImageDraw.Draw(img)
+        r = 6
+        # White outer circle + black inner dot — visible on any background
+        draw.ellipse((cx - r, cy - r, cx + r, cy + r), fill="white", outline="black", width=2)
+        draw.ellipse((cx - 2, cy - 2, cx + 2, cy + 2), fill="black")
+    except Exception:
+        pass
+    return img
+
 
 # ── Screen capture track ──────────────────────────────────────────────────────
 if AIORTC_OK:
     class ScreenShareTrack(VideoStreamTrack):
-        """Video track that continuously captures the screen via PIL."""
+        """Video track that captures the screen at ~20 fps with cursor overlay."""
         kind = "video"
+
+        def __init__(self):
+            super().__init__()
+            self._last_frame_time = 0.0
 
         async def recv(self) -> "VideoFrame":
             pts, time_base = await self.next_timestamp()
+
+            # Throttle to target FPS
+            now = time.monotonic()
+            wait = _FRAME_INTERVAL - (now - self._last_frame_time)
+            if wait > 0:
+                await asyncio.sleep(wait)
+            self._last_frame_time = time.monotonic()
+
             try:
-                img = ImageGrab.grab(all_screens=True)
-                # Downscale for bandwidth: max 1280px wide
-                max_w = 1280
+                img = ImageGrab.grab(all_screens=False)  # primary monitor only — faster
+                # Cap at 1920px wide for quality/bandwidth balance
+                max_w = 1920
                 if img.width > max_w:
                     ratio = max_w / img.width
-                    img = img.resize((max_w, int(img.height * ratio)))
+                    img = img.resize((max_w, int(img.height * ratio)), resample=1)  # LANCZOS
+                img = _draw_cursor(img)
                 arr = np.asarray(img.convert("RGB"))
                 frame = VideoFrame.from_ndarray(arr, format="rgb24")
                 frame.pts = pts
@@ -63,8 +108,7 @@ if AIORTC_OK:
                 return frame
             except Exception as e:
                 log.error("Screen capture error: %s", e)
-                # Return a black frame so the stream doesn't crash
-                arr = np.zeros((720, 1280, 3), dtype=np.uint8)
+                arr = np.zeros((1080, 1920, 3), dtype=np.uint8)
                 frame = VideoFrame.from_ndarray(arr, format="rgb24")
                 frame.pts = pts
                 frame.time_base = time_base

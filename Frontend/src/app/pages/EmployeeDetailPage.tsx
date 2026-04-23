@@ -139,21 +139,19 @@ export function EmployeeDetailPage() {
   const sessionIdRef = useRef<string | null>(null);
   const dialogContentRef = useRef<HTMLDivElement>(null);
 
-  // Fullscreen toggle for live screen dialog
+  // Fullscreen toggle for live screen dialog — CSS-based, no browser Fullscreen API
   const toggleDialogFullscreen = useCallback(() => {
-    if (!document.fullscreenElement) {
-      dialogContentRef.current?.requestFullscreen().catch(() => {});
-    } else {
-      document.exitFullscreen().catch(() => {});
-    }
+    setIsDialogFullscreen((prev) => !prev);
   }, []);
 
-  // Sync fullscreen state when user presses Esc or exits fullscreen
+  // Close fullscreen when Esc is pressed
   useEffect(() => {
-    const handler = () => setIsDialogFullscreen(!!document.fullscreenElement);
-    document.addEventListener("fullscreenchange", handler);
-    return () => document.removeEventListener("fullscreenchange", handler);
-  }, []);
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isDialogFullscreen) setIsDialogFullscreen(false);
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [isDialogFullscreen]);
 
   useEffect(() => {
     if (!id) return;
@@ -227,8 +225,12 @@ export function EmployeeDetailPage() {
       pc.onconnectionstatechange = () => {
         if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
           if (iceTimer) { clearTimeout(iceTimer); iceTimer = null; }
-          setLiveViewState("error");
-          setLiveError("WebRTC connection lost. Close and reopen to retry.");
+          // Auto-retry once before showing error
+          setLiveViewState("connecting");
+          setLiveError(null);
+          setTimeout(() => {
+            sendWsMessage("webrtc:request", { employeeId: id });
+          }, 2000);
         }
       };
 
@@ -239,6 +241,18 @@ export function EmployeeDetailPage() {
         // Create our answer
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
+
+        // Boost video bitrate to 4 Mbps
+        const senders = pc.getSenders();
+        for (const sender of senders) {
+          if (sender.track?.kind === "video") {
+            const params = sender.getParameters();
+            if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
+            params.encodings[0].maxBitrate = 4_000_000;
+            params.encodings[0].maxFramerate = 20;
+            sender.setParameters(params).catch(() => {});
+          }
+        }
 
         // Trickleless ICE: wait for gathering to complete before sending answer
         await new Promise<void>((resolve) => {
