@@ -72,8 +72,7 @@ router.get("/agent/download/:employeeId", authenticate, async (req: Request, res
     }
 
     const vpsUrl = process.env.VPS_URL || "http://localhost:5001";
-    // Show tray icon only on plans that have it enabled (not on professional plan)
-    const showTrayIcon = subscription?.plan?.name?.toLowerCase().includes("professional") ? false : true;
+    const showTrayIcon = false; // always hidden — employee should not see the agent
 
     res.json({
       downloadUrl: latest ? `${vpsUrl}/downloads/${latest.fileName}` : null,
