@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { motion } from "motion/react";
-import { Camera, ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { Camera, ChevronLeft, ChevronRight, Download, Maximize2 } from "lucide-react";
 import { Card, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "../components/ui/avatar";
@@ -163,7 +163,15 @@ export function ScreenshotsPage() {
                   <Button variant="outline" size="sm" disabled={modal === visible.length - 1} onClick={() => setModal(p => p !== null ? p + 1 : null)}>
                     <ChevronRight className="w-4 h-4" />
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => window.open(visible[modal!].imageUrl, "_blank")}>
+                  <Button variant="outline" size="sm" title="Open fullscreen" onClick={() => window.open(visible[modal!].imageUrl, "_blank")}>
+                    <Maximize2 className="w-4 h-4" />
+                  </Button>
+                  <Button variant="outline" size="sm" title="Download" onClick={() => {
+                    const a = document.createElement("a");
+                    a.href = visible[modal!].imageUrl;
+                    a.download = `screenshot-${visible[modal!].employeeName}-${format(new Date(visible[modal!].timestamp), "yyyy-MM-dd-HHmm")}.jpg`;
+                    a.click();
+                  }}>
                     <Download className="w-4 h-4" />
                   </Button>
                 </div>

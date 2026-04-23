@@ -161,11 +161,15 @@ export function DashboardPage() {
                 <Legend
                   iconType="circle"
                   iconSize={8}
-                  formatter={(value, entry: any) => (
-                    <span style={{ fontSize: "12px", color: "var(--foreground)" }}>
-                      {value} {entry.payload?.value}%
-                    </span>
-                  )}
+                  formatter={(value, entry: any) => {
+                    const total = topApps.reduce((s, a) => s + (a.value || 0), 0);
+                    const pct = total > 0 ? Math.round(((entry.payload?.value || 0) / total) * 100) : 0;
+                    return (
+                      <span style={{ fontSize: "12px", color: "var(--foreground)" }}>
+                        {value} {pct}%
+                      </span>
+                    );
+                  }}
                 />
               </PieChart>
             </ResponsiveContainer>

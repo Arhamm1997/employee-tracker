@@ -623,15 +623,27 @@ export function EmployeeDetailPage() {
                     <Pie
                       data={topApps}
                       cx="50%" cy="50%"
-                      outerRadius={80}
+                      innerRadius={45} outerRadius={75}
                       dataKey="value"
-                      label={({ name, percent }) => `${name} ${Math.round((percent || 0) * 100)}%`}
-                      labelLine={false}
-                      style={{ fontSize: "10px" }}
+                      paddingAngle={2}
                     >
                       {topApps.map((e, i) => <Cell key={i} fill={e.fill} />)}
                     </Pie>
-                    <RTooltip contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: "8px" }} />
+                    <RTooltip
+                      contentStyle={{ backgroundColor: "var(--card)", border: "1px solid var(--border)", borderRadius: "8px" }}
+                      formatter={(value: number, name: string) => {
+                        const total = topApps.reduce((s, a) => s + (a.value || 0), 0);
+                        const pct = total > 0 ? Math.round((value / total) * 100) : 0;
+                        return [`${pct}%`, name];
+                      }}
+                    />
+                    <Legend iconType="circle" iconSize={7}
+                      formatter={(value, entry: any) => {
+                        const total = topApps.reduce((s, a) => s + (a.value || 0), 0);
+                        const pct = total > 0 ? Math.round(((entry.payload?.value || 0) / total) * 100) : 0;
+                        return <span style={{ fontSize: "11px" }}>{value} {pct}%</span>;
+                      }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               </CardContent>
