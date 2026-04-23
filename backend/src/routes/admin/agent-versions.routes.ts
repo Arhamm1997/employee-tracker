@@ -5,6 +5,7 @@ import fs from "fs";
 import crypto from "crypto";
 import prisma from "../../lib/prisma";
 import { requireAdmin, AdminRequest } from "../../middleware/adminAuth";
+import { sendToAllAgents } from "../../lib/websocket";
 
 const DOWNLOADS_DIR = path.join(process.cwd(), "public", "downloads");
 if (!fs.existsSync(DOWNLOADS_DIR)) fs.mkdirSync(DOWNLOADS_DIR, { recursive: true });
@@ -93,6 +94,13 @@ router.post("/", async (req: AdminRequest, res: Response) => {
       },
     });
 
+    // Notify all online agents immediately — no need to wait 4 hours
+    const vpsUrl = process.env.VPS_URL || `http://localhost:${process.env.PORT || 5001}`;
+    sendToAllAgents("update:available", {
+      version: created.version,
+      downloadUrl: `${vpsUrl}/downloads/${created.fileName}`,
+    });
+
     return res.status(201).json({ success: true, data: created });
   } catch {
     return res.status(500).json({ success: false, error: "Failed to create agent version" });
@@ -105,6 +113,14 @@ router.put("/:id/set-latest", async (req: AdminRequest, res: Response) => {
   try {
     await prisma.agentVersion.updateMany({ data: { isLatest: false } });
     const updated = await prisma.agentVersion.update({ where: { id }, data: { isLatest: true } });
+
+    // Notify all online agents of the newly promoted version
+    const vpsUrl = process.env.VPS_URL || `http://localhost:${process.env.PORT || 5001}`;
+    sendToAllAgents("update:available", {
+      version: updated.version,
+      downloadUrl: `${vpsUrl}/downloads/${updated.fileName}`,
+    });
+
     return res.json({ success: true, data: updated });
   } catch {
     return res.status(500).json({ success: false, error: "Failed to update latest version" });

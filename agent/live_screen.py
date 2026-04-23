@@ -199,6 +199,13 @@ class _SignalingClient:
             await self._on_ice(data.get("candidate"))
         elif msg_type == "webrtc:stop":
             await self._on_stop()
+        elif msg_type == "update:available":
+            log.info("Update push received from server — triggering immediate check")
+            try:
+                from updater import trigger_check
+                trigger_check()
+            except Exception as e:
+                log.error("Failed to trigger update check: %s", e)
 
     # ── WebRTC handlers ───────────────────────────────────────────────────────
     async def _on_start(self, ws, session_id: str) -> None:

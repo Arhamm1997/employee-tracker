@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import threading
 import subprocess
 import requests
 from logger import log
@@ -8,9 +9,17 @@ from logger import log
 VERSION = "1.0.0"
 UPDATE_DIR = r"C:\ProgramData\EmployeeMonitor"
 
+# Set this event to trigger an immediate update check from outside the loop
+_trigger = threading.Event()
+
+
+def trigger_check():
+    """Called externally (e.g. from WS message) to force an immediate update check."""
+    _trigger.set()
+
 
 def check_and_update(cfg: dict):
-    """Check for updates on startup and every 4 hours."""
+    """Check for updates on startup, then every 4 hours or when triggered via WS."""
     from api import check_update
 
     while True:
@@ -24,8 +33,9 @@ def check_and_update(cfg: dict):
         except Exception as e:
             log.error("Update check failed: %s", e)
 
-        # Wait 4 hours before next check
-        time.sleep(4 * 3600)
+        # Wait up to 4 hours, but wake immediately if triggered via WS
+        _trigger.clear()
+        _trigger.wait(timeout=4 * 3600)
 
 
 def _download_and_apply(download_url: str):

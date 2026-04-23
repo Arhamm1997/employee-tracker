@@ -266,6 +266,16 @@ export function broadcast(type: string, data: unknown): void {
   });
 }
 
+export function sendToAllAgents(type: string, data: unknown): void {
+  const message = JSON.stringify({ type, data });
+  agentSockets.forEach((ws) => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(message);
+    }
+  });
+  logger.info(`Sent '${type}' to ${agentSockets.size} connected agent(s)`);
+}
+
 export async function broadcastAlertCount(): Promise<void> {
   try {
     const unread = await prisma.alert.count({ where: { isRead: false } });
