@@ -99,8 +99,17 @@ export function LiveScreenPage() {
       sessionIdRef.current = sessionId;
 
       if (pcRef.current) {
+        // Null out handlers BEFORE close — otherwise onconnectionstatechange
+        // fires "disconnected"/"failed" and queues a spurious retry request.
+        pcRef.current.ontrack = null;
+        pcRef.current.onconnectionstatechange = null;
         pcRef.current.close();
         pcRef.current = null;
+      }
+      // Cancel any pending retry timer that may have been queued
+      if (autoRetryTimer.current) {
+        clearTimeout(autoRetryTimer.current);
+        autoRetryTimer.current = null;
       }
 
       const pc = new RTCPeerConnection(ICE_CONFIG);
@@ -115,9 +124,10 @@ export function LiveScreenPage() {
       };
 
       pc.onconnectionstatechange = () => {
-        if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
+        // "disconnected" is transient — WebRTC can self-recover, don't retry yet.
+        // Only "failed" is permanent and requires a new offer/answer cycle.
+        if (pc.connectionState === "failed") {
           if (iceTimer) { clearTimeout(iceTimer); iceTimer = null; }
-          // Auto-retry up to 5 times before showing error
           setRetryCount((prev) => {
             const next = prev + 1;
             if (next <= 5) {
@@ -214,6 +224,8 @@ export function LiveScreenPage() {
       if (autoRetryTimer.current) clearTimeout(autoRetryTimer.current);
       unsubs.forEach((u) => u());
       if (pcRef.current) {
+        pcRef.current.ontrack = null;
+        pcRef.current.onconnectionstatechange = null;
         pcRef.current.close();
         pcRef.current = null;
       }
