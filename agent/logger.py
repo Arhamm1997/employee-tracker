@@ -31,6 +31,7 @@ def flush_error_buffer() -> list[dict]:
 
 
 def setup_logger(name: str = "EmployeeMonitor") -> logging.Logger:
+    import sys
     os.makedirs(LOG_DIR, exist_ok=True)
 
     logger = logging.getLogger(name)
@@ -43,7 +44,13 @@ def setup_logger(name: str = "EmployeeMonitor") -> logging.Logger:
     # logging.handlers -> stdlib queue -> agent's queue module -> logger (circular)
     from logging.handlers import TimedRotatingFileHandler
 
-    log_file = os.path.join(LOG_DIR, f"agent_{datetime.now():%Y-%m-%d}.log")
+    # Use exe name as log prefix so agent and watchdog don't share a file
+    # (TimedRotatingFileHandler holds an exclusive lock on Windows)
+    if getattr(sys, "frozen", False):
+        prefix = os.path.splitext(os.path.basename(sys.executable))[0]
+    else:
+        prefix = name
+    log_file = os.path.join(LOG_DIR, f"{prefix}_{datetime.now():%Y-%m-%d}.log")
     file_handler = TimedRotatingFileHandler(
         log_file, when="midnight", backupCount=7, encoding="utf-8"
     )
