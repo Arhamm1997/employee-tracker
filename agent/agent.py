@@ -502,10 +502,14 @@ def _send_clipboard(cfg, data):
 def _wait_for_network(timeout: int = 120) -> bool:
     """Wait until the server is reachable before starting monitoring."""
     server_url = _config.get("serverUrl", "")
-    host = server_url.replace("https://", "").replace("http://", "").split(":")[0]
-    port = 5000
+    # Strip scheme, then extract host and optional explicit port
+    host_part = server_url.replace("https://", "").replace("http://", "").split("/")[0]
+    host = host_part.split(":")[0]
+    # Default port based on scheme; override with explicit port if present
+    port = 443 if server_url.startswith("https://") else 80
     try:
-        port = int(server_url.split(":")[-1].strip("/"))
+        if ":" in host_part:
+            port = int(host_part.split(":")[1])
     except (ValueError, IndexError):
         pass
 
