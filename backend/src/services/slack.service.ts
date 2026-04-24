@@ -300,6 +300,23 @@ export async function sendAlertToSlack(opts: {
   }
 }
 
+// ─── Resolve Slack user display name from user ID ─────────────────────────────
+
+async function resolveSlackUserName(token: string, userId: string, fallback: string): Promise<string> {
+  // If fallback already looks like a real name (not a Slack user ID), use it
+  if (fallback && !/^U[A-Z0-9]{8,}$/.test(fallback)) return fallback;
+  try {
+    const resp = await slackGetCall("users.info", token, { user: userId });
+    if (resp.ok && resp.user) {
+      const u = resp.user as { real_name?: string; name?: string; profile?: { display_name?: string } };
+      return u.profile?.display_name || u.real_name || u.name || fallback;
+    }
+  } catch {
+    // ignore — return fallback
+  }
+  return fallback;
+}
+
 // ─── Handle incoming Slack message (webhook) ───────────────────────────────────
 
 export async function handleIncomingSlackMessage(opts: {
@@ -317,6 +334,10 @@ export async function handleIncomingSlackMessage(opts: {
     });
 
     if (!integration) return;
+
+    // Resolve real display name (webhook only sends user ID in slackUserName)
+    const token = decryptToken(integration.botAccessToken);
+    const resolvedName = await resolveSlackUserName(token, opts.slackUserId, opts.slackUserName);
 
     // Find which alert this thread belongs to
     let alertId: string | undefined;
@@ -349,7 +370,7 @@ export async function handleIncomingSlackMessage(opts: {
         direction: "inbound",
         content: opts.text,
         slackUserId: opts.slackUserId,
-        slackUserName: opts.slackUserName,
+        slackUserName: resolvedName,
         isRead: false,
         ...(linkedEmployeeId ? { employeeId: linkedEmployeeId } : {}),
       },
@@ -362,13 +383,13 @@ export async function handleIncomingSlackMessage(opts: {
       direction: "inbound",
       content: opts.text,
       slackUserId: opts.slackUserId,
-      slackUserName: opts.slackUserName,
+      slackUserName: resolvedName,
       slackTs: opts.ts,
       slackThreadTs: opts.threadTs,
       createdAt: slackMsg.createdAt.toISOString(),
     });
 
-    logger.debug(`Incoming Slack message from ${opts.slackUserName} in team ${opts.teamId}`);
+    logger.debug(`Incoming Slack message from ${resolvedName} in team ${opts.teamId}`);
   } catch (err) {
     logger.error("handleIncomingSlackMessage error:", err);
   }
