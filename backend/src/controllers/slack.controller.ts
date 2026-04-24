@@ -246,6 +246,49 @@ export async function markMessageRead(req: AuthRequest, res: Response, next: Nex
   }
 }
 
+// ─── Company: Manually send an alert to Slack ─────────────────────────────────
+
+export async function sendAlertToSlackManually(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const companyId = req.admin!.companyId!;
+    const { alertId } = req.params;
+
+    const alert = await prisma.alert.findFirst({
+      where: { id: alertId, companyId },
+      include: { employee: { select: { name: true, department: true } } },
+    });
+
+    if (!alert) {
+      res.status(404).json({ message: "Alert not found" });
+      return;
+    }
+
+    if (alert.slackTs) {
+      res.status(400).json({ message: "Alert already sent to Slack" });
+      return;
+    }
+
+    await slackService.sendAlertToSlack({
+      alertId: alert.id,
+      companyId,
+      alertType: alert.type,
+      employeeName: alert.employee.name,
+      department: alert.employee.department,
+      message: alert.message,
+      severity: alert.severity,
+      timestamp: alert.timestamp,
+    });
+
+    res.json({ success: true });
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      res.status(400).json({ message: err.message });
+    } else {
+      next(err);
+    }
+  }
+}
+
 // ─── Company: Reply to an alert's Slack thread ────────────────────────────────
 
 export async function replyToAlertThread(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {

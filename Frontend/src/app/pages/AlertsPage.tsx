@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   AlertTriangle, Check, CheckCheck, Trash2,
-  ShieldAlert, Clock, Usb, Download, Activity, MessageSquare
+  ShieldAlert, Clock, Usb, Download, Activity, MessageSquare, Send
 } from "lucide-react";
 import { Card, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
@@ -13,7 +13,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
 } from "../components/ui/alert-dialog";
-import { apiGetAlerts, apiMarkAlertRead, apiMarkAllAlertsRead, apiDeleteAlert, apiGetEmployees, apiGetSlackIntegration } from "../lib/api";
+import { apiGetAlerts, apiMarkAlertRead, apiMarkAllAlertsRead, apiDeleteAlert, apiGetEmployees, apiGetSlackIntegration, apiSendAlertToSlack } from "../lib/api";
 import type { Alert, Employee } from "../lib/types";
 import { SlackRepliesBadge, SlackMessagesPanel } from "../components/slack/SlackMessagesPanel";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "../components/ui/sheet";
@@ -56,6 +56,7 @@ export function AlertsPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [slackPanelAlertId, setSlackPanelAlertId] = useState<string | null>(null);
   const [slackConnected, setSlackConnected] = useState(false);
+  const [sendingSlackIds, setSendingSlackIds] = useState<Set<string>>(new Set());
   const { setUnreadAlerts, latestAlerts } = useSocket();
 
   // Check if Slack is connected
@@ -124,6 +125,19 @@ export function AlertsPage() {
       toast.success("All alerts marked as read");
     } catch {
       toast.error("Failed to mark all alerts as read");
+    }
+  };
+
+  const sendToSlack = async (alertId: string) => {
+    setSendingSlackIds(prev => new Set(prev).add(alertId));
+    try {
+      await apiSendAlertToSlack(alertId);
+      setAlerts(prev => prev.map(a => a.id === alertId ? { ...a, sentToSlack: true } : a));
+      toast.success("Alert sent to Slack");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to send to Slack");
+    } finally {
+      setSendingSlackIds(prev => { const s = new Set(prev); s.delete(alertId); return s; });
     }
   };
 
@@ -257,6 +271,17 @@ export function AlertsPage() {
                           initialUnreadCount={alert.slackUnreadCount ?? 0}
                           onClick={() => setSlackPanelAlertId(alert.id)}
                         />
+                      )}
+                      {slackConnected && !alert.sentToSlack && (
+                        <button
+                          onClick={() => sendToSlack(alert.id)}
+                          disabled={sendingSlackIds.has(alert.id)}
+                          title="Send to Slack"
+                          className="flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-[#4a154b]/10 text-[#4a154b] hover:bg-[#4a154b]/20 transition-colors disabled:opacity-50"
+                        >
+                          <Send className="w-3 h-3" />
+                          {sendingSlackIds.has(alert.id) ? "Sending…" : "Send to Slack"}
+                        </button>
                       )}
                     </div>
                   </div>

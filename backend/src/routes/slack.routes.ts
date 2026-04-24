@@ -13,6 +13,7 @@ import {
   markMessageRead,
   getAlertSlackMessages,
   replyToAlertThread,
+  sendAlertToSlackManually,
   handleWebhook,
   getSlackConversations,
   getSlackEmployeeMessages,
@@ -83,6 +84,11 @@ router.get("/alert/:alertId/messages", (req, res, next) => {
 // Reply to alert Slack thread
 router.post("/alert/:alertId/reply", (req, res, next) => {
   replyToAlertThread(req, res, next);
+});
+
+// Manually send alert to Slack
+router.post("/alert/:alertId/send", (req, res, next) => {
+  sendAlertToSlackManually(req, res, next);
 });
 
 // Slack DM conversations (for Messages page)
