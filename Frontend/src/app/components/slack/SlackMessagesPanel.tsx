@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { MessageSquare, Send, Loader2, ArrowLeft } from "lucide-react";
 import { Button } from "../ui/button";
 import { ScrollArea } from "../ui/scroll-area";
-import { apiGetAlertSlackMessages, apiMarkSlackMessageRead, type SlackMessage } from "../../lib/api";
+import { apiGetAlertSlackMessages, apiMarkSlackMessageRead, apiReplyToAlertThread, type SlackMessage } from "../../lib/api";
 import { useSocket } from "../../lib/socket-context";
 import { toast } from "sonner";
 
@@ -37,7 +37,10 @@ function MessageBubble({ msg }: { msg: SlackMessage }) {
 export function SlackMessagesPanel({ alertId, onClose }: SlackMessagesPanelProps) {
   const [messages, setMessages] = useState<SlackMessage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reply, setReply] = useState("");
+  const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const { subscribeToMessage } = useSocket();
 
   useEffect(() => {
@@ -85,6 +88,21 @@ export function SlackMessagesPanel({ alertId, onClose }: SlackMessagesPanelProps
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const handleSend = async () => {
+    const text = reply.trim();
+    if (!text || sending) return;
+    setSending(true);
+    try {
+      await apiReplyToAlertThread(alertId, text);
+      setReply("");
+      inputRef.current?.focus();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to send reply to Slack");
+    } finally {
+      setSending(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-32 gap-2 text-muted-foreground text-sm">
@@ -111,7 +129,7 @@ export function SlackMessagesPanel({ alertId, onClose }: SlackMessagesPanelProps
         <div className="py-4 space-y-3">
           {messages.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground text-sm">
-              No Slack messages yet. Replies to the alert in Slack will appear here.
+              No messages yet. Reply below to post in the Slack thread.
             </div>
           ) : (
             messages.map((msg) => <MessageBubble key={msg.id} msg={msg} />)
@@ -119,6 +137,28 @@ export function SlackMessagesPanel({ alertId, onClose }: SlackMessagesPanelProps
           <div ref={bottomRef} />
         </div>
       </ScrollArea>
+
+      {/* Reply input */}
+      <div className="border-t p-3 flex gap-2">
+        <input
+          ref={inputRef}
+          type="text"
+          value={reply}
+          onChange={(e) => setReply(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+          placeholder="Reply in Slack thread..."
+          className="flex-1 text-sm bg-muted rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#4A154B]/40 placeholder:text-muted-foreground"
+          disabled={sending}
+        />
+        <Button
+          size="icon"
+          className="shrink-0 bg-[#4A154B] hover:bg-[#4A154B]/90 text-white"
+          onClick={handleSend}
+          disabled={!reply.trim() || sending}
+        >
+          {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+        </Button>
+      </div>
     </div>
   );
 }

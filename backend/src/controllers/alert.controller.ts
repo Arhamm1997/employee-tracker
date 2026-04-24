@@ -12,6 +12,7 @@ function formatAlert(
     message: string;
     timestamp: Date;
     isRead: boolean;
+    slackTs: string | null;
     employee: { name: string };
   },
   slackUnreadCount = 0,
@@ -26,6 +27,7 @@ function formatAlert(
     timestamp: alert.timestamp.toISOString(),
     read: alert.isRead,
     slackUnreadCount,
+    sentToSlack: !!alert.slackTs,
   };
 }
 

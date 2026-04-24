@@ -108,7 +108,7 @@ interface SlackChannelRaw {
 export function getSlackOAuthUrl(state: string): string {
   const clientId = process.env.SLACK_CLIENT_ID;
   const redirectUri = encodeURIComponent(process.env.SLACK_REDIRECT_URI || "");
-  const scopes = "chat:write,channels:read,groups:read,users:read,users:read.email,team:read,im:write,im:read,im:history,mpim:read";
+  const scopes = "chat:write,channels:read,channels:history,groups:read,groups:history,users:read,users:read.email,team:read,im:write,im:read,im:history,mpim:read";
   return `https://slack.com/oauth/v2/authorize?client_id=${clientId}&scope=${scopes}&redirect_uri=${redirectUri}&state=${state}`;
 }
 
@@ -449,6 +449,60 @@ export async function sendDirectMessageToEmployee(opts: {
   });
 
   return { slackTs, slackUserId };
+}
+
+// ─── Reply to an alert thread ─────────────────────────────────────────────────
+
+export async function replyToAlertThread(opts: {
+  companyId: string;
+  alertId: string;
+  message: string;
+}): Promise<void> {
+  const integration = await getActiveIntegration(opts.companyId);
+  const token = decryptToken(integration.botAccessToken);
+
+  // Get the alert's Slack thread timestamp
+  const alert = await prisma.alert.findUnique({
+    where: { id: opts.alertId },
+    select: { slackTs: true, slackThreadTs: true },
+  });
+
+  if (!alert?.slackTs) throw new Error("This alert was not sent to Slack or has no thread");
+
+  const settings = await prisma.settings.findFirst({ where: { companyId: opts.companyId } });
+  if (!settings?.slackChannelId) throw new Error("No Slack channel configured");
+
+  const threadTs = alert.slackThreadTs || alert.slackTs;
+
+  const resp = await slackApiCall("chat.postMessage", token, {
+    channel: settings.slackChannelId,
+    text: opts.message,
+    thread_ts: threadTs,
+  });
+
+  if (!resp.ok) throw new Error(`Failed to send reply: ${resp.error}`);
+
+  const slackMsg = await prisma.slackMessage.create({
+    data: {
+      integrationId: integration.id,
+      alertId: opts.alertId,
+      channelId: settings.slackChannelId,
+      slackTs: resp.ts!,
+      slackThreadTs: threadTs,
+      direction: "outbound",
+      content: opts.message,
+    },
+  });
+
+  broadcast("slackMessage:new", {
+    id: slackMsg.id,
+    alertId: opts.alertId,
+    direction: "outbound",
+    content: opts.message,
+    slackTs: resp.ts!,
+    slackThreadTs: threadTs,
+    createdAt: slackMsg.createdAt.toISOString(),
+  });
 }
 
 // ─── Test connection ───────────────────────────────────────────────────────────

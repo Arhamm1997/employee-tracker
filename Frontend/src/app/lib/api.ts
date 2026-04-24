@@ -459,6 +459,9 @@ export const apiMarkSlackMessageRead = (messageId: string) =>
 export const apiGetAlertSlackMessages = (alertId: string) =>
   get<{ messages: SlackMessage[] }>(`/slack/alert/${alertId}/messages`);
 
+export const apiReplyToAlertThread = (alertId: string, message: string) =>
+  post<{ success: boolean }>(`/slack/alert/${alertId}/reply`, { message });
+
 // ─── Slack Conversations (Messages page) ─────────────────────────────────────
 
 export interface SlackConversationEmployee {

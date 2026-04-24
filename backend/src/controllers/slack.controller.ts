@@ -246,6 +246,30 @@ export async function markMessageRead(req: AuthRequest, res: Response, next: Nex
   }
 }
 
+// ─── Company: Reply to an alert's Slack thread ────────────────────────────────
+
+export async function replyToAlertThread(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const companyId = req.admin!.companyId!;
+    const { alertId } = req.params;
+    const { message } = req.body as { message?: string };
+
+    if (!message?.trim()) {
+      res.status(400).json({ message: "Message cannot be empty" });
+      return;
+    }
+
+    await slackService.replyToAlertThread({ companyId, alertId, message: message.trim() });
+    res.json({ success: true });
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      res.status(400).json({ message: err.message });
+    } else {
+      next(err);
+    }
+  }
+}
+
 // ─── Company: Get Slack messages for an alert ─────────────────────────────────
 
 export async function getAlertSlackMessages(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {

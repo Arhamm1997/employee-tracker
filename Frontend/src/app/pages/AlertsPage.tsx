@@ -251,7 +251,7 @@ export function AlertsPage() {
                       <span className="text-muted-foreground" style={{ fontSize: "12px" }}>
                         {format(new Date(alert.timestamp), "PPpp")}
                       </span>
-                      {slackConnected && (
+                      {slackConnected && alert.sentToSlack && (
                         <SlackRepliesBadge
                           alertId={alert.id}
                           initialUnreadCount={alert.slackUnreadCount ?? 0}
