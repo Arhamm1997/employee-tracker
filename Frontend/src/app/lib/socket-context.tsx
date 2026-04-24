@@ -187,8 +187,9 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
             } else if (msg.type === "new_message") {
               setUnreadMessages(prev => prev + 1);
             } else if (msg.type === "slackMessage:new") {
-              const d = msg.data as { direction?: string };
-              if (d?.direction === "inbound") {
+              const d = msg.data as { direction?: string; alertId?: string };
+              // Only count DM replies (no alertId) — alert thread replies go to SlackRepliesBadge
+              if (d?.direction === "inbound" && !d?.alertId) {
                 setUnreadMessages(prev => prev + 1);
               }
             }
