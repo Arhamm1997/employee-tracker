@@ -204,8 +204,11 @@ export function EmployeeDetailPage() {
       if (sessionIdRef.current && sessionIdRef.current !== sessionId) return;
       sessionIdRef.current = sessionId;
 
-      // Close any stale peer connection
+      // Clear handlers before closing stale connection (prevents spurious retries)
       if (pcRef.current) {
+        pcRef.current.ontrack = null;
+        pcRef.current.onconnectionstatechange = null;
+        pcRef.current.onicecandidate = null;
         pcRef.current.close();
         pcRef.current = null;
       }
@@ -213,7 +216,6 @@ export function EmployeeDetailPage() {
       const pc = new RTCPeerConnection(ICE_CONFIG);
       pcRef.current = pc;
 
-      // When the video track arrives, attach it to the <video> element
       pc.ontrack = (event) => {
         if (iceTimer) { clearTimeout(iceTimer); iceTimer = null; }
         if (videoRef.current && event.streams[0]) {
@@ -222,72 +224,63 @@ export function EmployeeDetailPage() {
         }
       };
 
+      // Trickle ICE: send our candidates to the agent as they are found
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          sendWsMessage("webrtc:ice", { sessionId, candidate: event.candidate.toJSON() });
+        }
+      };
+
+      // Only retry on "failed" — "disconnected" is transient and can self-recover
       pc.onconnectionstatechange = () => {
-        if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
+        if (pc.connectionState === "failed") {
           if (iceTimer) { clearTimeout(iceTimer); iceTimer = null; }
-          // Auto-retry once before showing error
           setLiveViewState("connecting");
           setLiveError(null);
-          setTimeout(() => {
-            sendWsMessage("webrtc:request", { employeeId: id });
-          }, 2000);
+          setTimeout(() => sendWsMessage("webrtc:request", { employeeId: id }), 2000);
         }
       };
 
       try {
-        // Set agent's offer as remote description
         await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-
-        // Create our answer
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
 
         // Boost video bitrate to 4 Mbps
-        const senders = pc.getSenders();
-        for (const sender of senders) {
+        for (const sender of pc.getSenders()) {
           if (sender.track?.kind === "video") {
             const params = sender.getParameters();
-            if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
+            if (!params.encodings?.length) params.encodings = [{}];
             params.encodings[0].maxBitrate = 4_000_000;
             params.encodings[0].maxFramerate = 20;
             sender.setParameters(params).catch(() => {});
           }
         }
 
-        // Trickleless ICE: wait for gathering to complete before sending answer
-        await new Promise<void>((resolve) => {
-          if (pc.iceGatheringState === "complete") { resolve(); return; }
-          const check = () => {
-            if (pc.iceGatheringState === "complete") {
-              pc.removeEventListener("icegatheringstatechange", check);
-              resolve();
-            }
-          };
-          pc.addEventListener("icegatheringstatechange", check);
-          // Timeout fallback: send after 5s even if not complete
-          setTimeout(resolve, 5000);
-        });
-
-        // Send complete SDP answer (with embedded ICE candidates)
+        // Trickle ICE: send answer immediately — no gathering wait needed
         sendWsMessage("webrtc:answer", {
           sessionId,
-          sdp: {
-            type: pc.localDescription!.type,
-            sdp: pc.localDescription!.sdp,
-          },
+          sdp: { type: pc.localDescription!.type, sdp: pc.localDescription!.sdp },
         });
 
-        // ICE timeout: if P2P doesn't connect within 20s, show error
         iceTimer = setTimeout(() => {
           if (pc.connectionState !== "connected") {
             setLiveViewState("error");
-            setLiveError("Connection timed out. Agent may be unreachable due to NAT or firewall.");
+            setLiveError("Connection timed out. Agent may be behind a strict NAT/firewall.");
           }
         }, 20000);
       } catch (err) {
         console.error("WebRTC answer failed:", err);
         setLiveViewState("error");
         setLiveError("Failed to establish WebRTC connection.");
+      }
+    }));
+
+    // Trickle ICE: add agent candidates as they arrive
+    unsubs.push(subscribeToMessage("webrtc:ice", async (raw) => {
+      const { candidate } = raw as { candidate: RTCIceCandidateInit };
+      if (pcRef.current && candidate?.candidate) {
+        try { await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate)); } catch { /* ignore */ }
       }
     }));
 
@@ -315,6 +308,9 @@ export function EmployeeDetailPage() {
       if (iceTimer) clearTimeout(iceTimer);
       unsubs.forEach(u => u());
       if (pcRef.current) {
+        pcRef.current.ontrack = null;
+        pcRef.current.onconnectionstatechange = null;
+        pcRef.current.onicecandidate = null;
         pcRef.current.close();
         pcRef.current = null;
       }

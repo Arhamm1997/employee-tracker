@@ -210,7 +210,6 @@ class _SignalingClient:
     # ── WebRTC handlers ───────────────────────────────────────────────────────
     async def _on_start(self, ws, session_id: str) -> None:
         """Admin opened Live Screen — create RTCPeerConnection and send offer."""
-        # Close any existing stream first
         await self._on_stop()
 
         log.info("WebRTC: session %s — creating offer", session_id)
@@ -223,23 +222,34 @@ class _SignalingClient:
             pc = RTCPeerConnection(configuration=ice_config)
             self._pc = pc
 
-            # Add screen capture video track
+            # Trickle ICE: forward each candidate to the admin as it is discovered.
+            # This lets P2P start immediately instead of waiting 10s for full gathering.
+            @pc.on("icecandidate")
+            async def on_ice_candidate(candidate):
+                if candidate is None:
+                    return
+                try:
+                    await ws.send(json.dumps({
+                        "type": "webrtc:ice",
+                        "data": {
+                            "sessionId": session_id,
+                            "candidate": {
+                                "candidate": "candidate:" + candidate.to_sdp(),
+                                "sdpMid": candidate.sdpMid,
+                                "sdpMLineIndex": candidate.sdpMLineIndex,
+                            },
+                        },
+                    }))
+                    log.debug("WebRTC: ICE candidate sent")
+                except Exception as ice_err:
+                    log.debug("WebRTC: ICE candidate send error: %s", ice_err)
+
             pc.addTrack(ScreenShareTrack())
 
-            # Build offer
             offer = await pc.createOffer()
             await pc.setLocalDescription(offer)
 
-            # Trickleless ICE: wait until all ICE candidates are embedded in SDP
-            # (avoids a separate ICE candidate exchange protocol)
-            deadline = time.monotonic() + 10.0
-            while pc.iceGatheringState != "complete":
-                if time.monotonic() > deadline:
-                    log.warning("WebRTC: ICE gather timed out — sending partial SDP")
-                    break
-                await asyncio.sleep(0.1)
-
-            # Send the complete SDP (offer + embedded candidates)
+            # Send offer IMMEDIATELY — trickle ICE handles the rest
             await ws.send(json.dumps({
                 "type": "webrtc:offer",
                 "data": {
@@ -250,7 +260,7 @@ class _SignalingClient:
                     },
                 },
             }))
-            log.info("WebRTC: offer sent — waiting for admin answer")
+            log.info("WebRTC: offer sent (trickle ICE active)")
 
         except Exception as e:
             log.error("WebRTC: failed to create offer for session %s: %s", session_id, e)
@@ -278,10 +288,24 @@ class _SignalingClient:
             log.error("WebRTC: setRemoteDescription failed: %s", e)
 
     async def _on_ice(self, candidate: dict | None) -> None:
-        """Handle trickle ICE from admin (optional with trickleless approach)."""
-        # We use trickleless ICE so this is usually not needed, but handle
-        # gracefully in case the browser sends candidates anyway.
-        pass
+        """Add a trickle ICE candidate received from the admin browser."""
+        if not self._pc or not candidate:
+            return
+        candidate_str = candidate.get("candidate", "")
+        if not candidate_str:
+            return
+        try:
+            from aiortc.sdp import candidate_from_sdp
+            # Browser sends "candidate:..." prefix — strip it
+            if candidate_str.startswith("candidate:"):
+                candidate_str = candidate_str[len("candidate:"):]
+            rtc_candidate = candidate_from_sdp(candidate_str)
+            rtc_candidate.sdpMid = candidate.get("sdpMid", "0")
+            rtc_candidate.sdpMLineIndex = int(candidate.get("sdpMLineIndex") or 0)
+            await self._pc.addIceCandidate(rtc_candidate)
+            log.debug("WebRTC: added ICE candidate from admin")
+        except Exception as e:
+            log.debug("WebRTC: failed to add ICE candidate: %s", e)
 
     async def _on_stop(self) -> None:
         """Admin closed the view — tear down the peer connection."""

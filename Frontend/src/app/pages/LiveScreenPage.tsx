@@ -123,6 +123,13 @@ export function LiveScreenPage() {
         }
       };
 
+      // Trickle ICE: send our candidates to the agent as they are found
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          sendWsMessage("webrtc:ice", { sessionId, candidate: event.candidate.toJSON() });
+        }
+      };
+
       pc.onconnectionstatechange = () => {
         // "disconnected" is transient — WebRTC can self-recover, don't retry yet.
         // Only "failed" is permanent and requires a new offer/answer cycle.
@@ -167,18 +174,7 @@ export function LiveScreenPage() {
           }
         }
 
-        await new Promise<void>((resolve) => {
-          if (pc.iceGatheringState === "complete") { resolve(); return; }
-          const check = () => {
-            if (pc.iceGatheringState === "complete") {
-              pc.removeEventListener("icegatheringstatechange", check);
-              resolve();
-            }
-          };
-          pc.addEventListener("icegatheringstatechange", check);
-          setTimeout(resolve, 5000);
-        });
-
+        // Trickle ICE: send answer immediately — no gathering wait needed
         sendWsMessage("webrtc:answer", {
           sessionId,
           sdp: {
@@ -198,6 +194,14 @@ export function LiveScreenPage() {
         console.error("WebRTC answer failed:", err);
         setViewState("error");
         setError("Failed to establish WebRTC connection.");
+      }
+    }));
+
+    // Trickle ICE: add agent candidates as they arrive
+    unsubs.push(subscribeToMessage("webrtc:ice", async (raw) => {
+      const { candidate } = raw as { candidate: RTCIceCandidateInit };
+      if (pcRef.current && candidate?.candidate) {
+        try { await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate)); } catch { /* ignore */ }
       }
     }));
 
@@ -226,6 +230,7 @@ export function LiveScreenPage() {
       if (pcRef.current) {
         pcRef.current.ontrack = null;
         pcRef.current.onconnectionstatechange = null;
+        pcRef.current.onicecandidate = null;
         pcRef.current.close();
         pcRef.current = null;
       }
