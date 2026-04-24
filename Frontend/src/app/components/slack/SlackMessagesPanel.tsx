@@ -195,7 +195,7 @@ export function SlackRepliesBadge({ alertId, initialUnreadCount = 0, onClick }: 
   return (
     <button
       onClick={onClick}
-      className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-[#4A154B]/10 text-[#4A154B] hover:bg-[#4A154B]/20 transition-colors"
+      className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-[#4A154B]/10 text-[#4A154B] hover:bg-[#4A154B]/20 dark:bg-purple-500/20 dark:text-purple-300 dark:hover:bg-purple-500/30 transition-colors"
     >
       <MessageSquare className="w-3 h-3" />
       Slack

@@ -277,7 +277,7 @@ export function AlertsPage() {
                           onClick={() => sendToSlack(alert.id)}
                           disabled={sendingSlackIds.has(alert.id)}
                           title="Send to Slack"
-                          className="flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-[#4a154b]/10 text-[#4a154b] hover:bg-[#4a154b]/20 transition-colors disabled:opacity-50"
+                          className="flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-[#4a154b]/10 text-[#4a154b] hover:bg-[#4a154b]/20 dark:bg-purple-500/20 dark:text-purple-300 dark:hover:bg-purple-500/30 transition-colors disabled:opacity-50"
                         >
                           <Send className="w-3 h-3" />
                           {sendingSlackIds.has(alert.id) ? "Sending…" : "Send to Slack"}
