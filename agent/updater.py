@@ -6,7 +6,7 @@ import subprocess
 import requests
 from logger import log
 
-VERSION = "1.0.7"
+VERSION = "1.0.8"
 UPDATE_DIR = r"C:\ProgramData\EmployeeMonitor"
 
 # Set this event to trigger an immediate update check from outside the loop

@@ -32,41 +32,34 @@ def flush_error_buffer() -> list[dict]:
 
 def setup_logger(name: str = "EmployeeMonitor") -> logging.Logger:
     import sys
+    from logging.handlers import TimedRotatingFileHandler
 
-    # Try primary location first, fall back to user-writable location if permissions denied
-    log_dir = LOG_DIR
+    if getattr(sys, "frozen", False):
+        prefix = os.path.splitext(os.path.basename(sys.executable))[0]
+    else:
+        prefix = name
+
+    def _make_file_handler(log_dir: str) -> TimedRotatingFileHandler:
+        os.makedirs(log_dir, exist_ok=True)
+        log_file = os.path.join(log_dir, f"{prefix}_{datetime.now():%Y-%m-%d}.log")
+        return TimedRotatingFileHandler(
+            log_file, when="midnight", backupCount=7, encoding="utf-8"
+        )
+
+    # Try C:\ProgramData first; fall back to user AppData if permission denied.
+    # Wrap the actual handler creation so a locked/admin-owned existing log file
+    # also triggers the fallback (write-test on a different file would miss this).
     try:
-        os.makedirs(log_dir, exist_ok=True)
-        # Test write permission
-        test_file = os.path.join(log_dir, ".write_test")
-        with open(test_file, "w") as f:
-            f.write("test")
-        os.remove(test_file)
+        file_handler = _make_file_handler(LOG_DIR)
     except (PermissionError, OSError):
-        # Fall back to user AppData if C:\ProgramData not writable
-        log_dir = os.path.expandvars(r"%LOCALAPPDATA%\EmployeeMonitor\logs")
-        os.makedirs(log_dir, exist_ok=True)
+        fallback = os.path.expandvars(r"%LOCALAPPDATA%\EmployeeMonitor\logs")
+        file_handler = _make_file_handler(fallback)
 
     logger = logging.getLogger(name)
     if logger.handlers:
         return logger
 
     logger.setLevel(logging.DEBUG)
-
-    # Import inside function to avoid circular import when PyInstaller bundles
-    # logging.handlers -> stdlib queue -> agent's queue module -> logger (circular)
-    from logging.handlers import TimedRotatingFileHandler
-
-    # Use exe name as log prefix so agent and watchdog don't share a file
-    # (TimedRotatingFileHandler holds an exclusive lock on Windows)
-    if getattr(sys, "frozen", False):
-        prefix = os.path.splitext(os.path.basename(sys.executable))[0]
-    else:
-        prefix = name
-    log_file = os.path.join(log_dir, f"{prefix}_{datetime.now():%Y-%m-%d}.log")
-    file_handler = TimedRotatingFileHandler(
-        log_file, when="midnight", backupCount=7, encoding="utf-8"
-    )
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(
         logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
