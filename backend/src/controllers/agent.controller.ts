@@ -703,17 +703,17 @@ export async function checkUpdate(
   try {
     const agentVersion = req.headers["x-agent-version"] as string | undefined;
 
-    const latestUpdate = await prisma.agentUpdate.findFirst({
+    const latestVersion = await prisma.agentVersion.findFirst({
       where: { isLatest: true },
       orderBy: { createdAt: "desc" },
     });
 
-    if (!latestUpdate) {
+    if (!latestVersion) {
       res.json({ hasUpdate: false });
       return;
     }
 
-    const hasUpdate = !agentVersion || agentVersion !== latestUpdate.version;
+    const hasUpdate = !agentVersion || agentVersion !== latestVersion.version;
 
     // Update agent version on employee record
     if (agentVersion) {
@@ -725,9 +725,9 @@ export async function checkUpdate(
 
     res.json({
       hasUpdate,
-      version: latestUpdate.version,
-      downloadUrl: hasUpdate ? latestUpdate.downloadUrl : undefined,
-      changelog: hasUpdate ? latestUpdate.changelog : undefined,
+      version: latestVersion.version,
+      downloadUrl: hasUpdate ? `${process.env.VPS_URL || `http://localhost:${process.env.PORT || 5001}`}${latestVersion.filePath}` : undefined,
+      releaseNotes: hasUpdate ? latestVersion.releaseNotes : undefined,
     });
   } catch (err) {
     next(err);

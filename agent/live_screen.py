@@ -218,6 +218,10 @@ class _SignalingClient:
             ice_config = RTCConfiguration(iceServers=[
                 RTCIceServer(urls=["stun:stun.l.google.com:19302"]),
                 RTCIceServer(urls=["stun:stun1.l.google.com:19302"]),
+                RTCIceServer(urls=["turn:api.monitorhub.live:3478"],
+                             username="monitorhub", credential="Monitor@hub96"),
+                RTCIceServer(urls=["turn:api.monitorhub.live:3478?transport=tcp"],
+                             username="monitorhub", credential="Monitor@hub96"),
             ])
             pc = RTCPeerConnection(configuration=ice_config)
             self._pc = pc

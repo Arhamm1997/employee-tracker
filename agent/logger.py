@@ -32,7 +32,20 @@ def flush_error_buffer() -> list[dict]:
 
 def setup_logger(name: str = "EmployeeMonitor") -> logging.Logger:
     import sys
-    os.makedirs(LOG_DIR, exist_ok=True)
+
+    # Try primary location first, fall back to user-writable location if permissions denied
+    log_dir = LOG_DIR
+    try:
+        os.makedirs(log_dir, exist_ok=True)
+        # Test write permission
+        test_file = os.path.join(log_dir, ".write_test")
+        with open(test_file, "w") as f:
+            f.write("test")
+        os.remove(test_file)
+    except (PermissionError, OSError):
+        # Fall back to user AppData if C:\ProgramData not writable
+        log_dir = os.path.expandvars(r"%LOCALAPPDATA%\EmployeeMonitor\logs")
+        os.makedirs(log_dir, exist_ok=True)
 
     logger = logging.getLogger(name)
     if logger.handlers:
@@ -50,7 +63,7 @@ def setup_logger(name: str = "EmployeeMonitor") -> logging.Logger:
         prefix = os.path.splitext(os.path.basename(sys.executable))[0]
     else:
         prefix = name
-    log_file = os.path.join(LOG_DIR, f"{prefix}_{datetime.now():%Y-%m-%d}.log")
+    log_file = os.path.join(log_dir, f"{prefix}_{datetime.now():%Y-%m-%d}.log")
     file_handler = TimedRotatingFileHandler(
         log_file, when="midnight", backupCount=7, encoding="utf-8"
     )

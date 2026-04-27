@@ -32,12 +32,21 @@ import { toast } from "sonner";
 import { useSocket } from "../lib/socket-context";
 import { useSubscription, hasFeature } from "../lib/subscription-context";
 
-// STUN servers for WebRTC ICE (NAT traversal on LAN — usually not needed,
-// but included for cross-subnet deployments).
+// STUN + self-hosted TURN for WebRTC ICE (required for cross-network P2P).
 const ICE_CONFIG: RTCConfiguration = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
+    {
+      urls: "turn:api.monitorhub.live:3478",
+      username: "monitorhub",
+      credential: "Monitor@hub96",
+    },
+    {
+      urls: "turn:api.monitorhub.live:3478?transport=tcp",
+      username: "monitorhub",
+      credential: "Monitor@hub96",
+    },
   ],
 };
 
