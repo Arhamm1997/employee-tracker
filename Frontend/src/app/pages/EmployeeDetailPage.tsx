@@ -136,7 +136,7 @@ export function EmployeeDetailPage() {
   const [slackMessageDialog, setSlackMessageDialog] = useState(false);
   const [slackMessage, setSlackMessage] = useState("");
   const [sendingSlackMessage, setSendingSlackMessage] = useState(false);
-
+  const [recentScreenshots, setRecentScreenshots] = useState<Screenshot[]>([]);
 
   // ─── Live screen WebRTC state ─────────────────────────────────────────────
   const [liveScreenOpen, setLiveScreenOpen] = useState(false);
@@ -189,6 +189,26 @@ export function EmployeeDetailPage() {
       clearInterval(interval);
     };
   }, [id]);
+
+  // ─── Sidebar: recent screenshots from all employees ───────────────────────
+  useEffect(() => {
+    if (!hasFeature(seatInfo, "screenshots")) return;
+    let cancelled = false;
+    const loadScreenshots = async () => {
+      try {
+        const shots = await apiGetScreenshots({});
+        if (!cancelled) setRecentScreenshots(shots.slice(0, 20));
+      } catch {
+        // silently fail
+      }
+    };
+    loadScreenshots();
+    const interval = setInterval(loadScreenshots, 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [seatInfo]);
 
   // ─── WebRTC live screen: request → offer → answer → P2P stream ────────────
   useEffect(() => {
@@ -440,28 +460,6 @@ export function EmployeeDetailPage() {
 
   // Current employee's latest activity from live feed
   const liveActivity = latestActivities.find(a => a.employeeId === id);
-
-  // Fetch recent screenshots from all employees for sidebar
-  const [recentScreenshots, setRecentScreenshots] = useState<Screenshot[]>([]);
-
-  useEffect(() => {
-    if (!hasFeature(seatInfo, "screenshots")) return;
-    let cancelled = false;
-    const loadScreenshots = async () => {
-      try {
-        const screenshots = await apiGetScreenshots({});
-        if (!cancelled) setRecentScreenshots(screenshots.slice(0, 20));
-      } catch {
-        // silently fail
-      }
-    };
-    loadScreenshots();
-    const interval = setInterval(loadScreenshots, 30000); // refresh every 30s
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, [seatInfo]);
 
   return (
     <div className="flex gap-6">
