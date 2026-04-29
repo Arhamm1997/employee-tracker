@@ -154,6 +154,7 @@ export function EmployeeDetailPage() {
   }, []);
 
   // Keyboard: Esc closes live-screen fullscreen or screenshot modal; arrows navigate screenshots
+  const ssCount = data?.screenshots?.length ?? 0;
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -164,12 +165,12 @@ export function EmployeeDetailPage() {
         if (e.key === "ArrowLeft")
           setScreenshotModal(p => (p !== null && p > 0 ? p - 1 : p));
         if (e.key === "ArrowRight")
-          setScreenshotModal(p => (p !== null && p < screenshots.length - 1 ? p + 1 : p));
+          setScreenshotModal(p => (p !== null && p < ssCount - 1 ? p + 1 : p));
       }
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [isDialogFullscreen, screenshotModal, screenshots.length]);
+  }, [isDialogFullscreen, screenshotModal, ssCount]);
 
   useEffect(() => {
     if (!id) return;
