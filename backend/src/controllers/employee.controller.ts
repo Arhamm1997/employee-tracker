@@ -220,9 +220,9 @@ export async function getEmployeeDetail(
         where: { employeeId: emp.id, timestamp: { gte: todayStart, lte: todayEnd } },
       }),
       prisma.screenshot.findMany({
-        where: { employeeId: emp.id },
+        where: { employeeId: emp.id, timestamp: { gte: todayStart, lte: todayEnd } },
         orderBy: { timestamp: "desc" },
-        take: 20,
+        take: 50,
       }),
       prisma.browserHistory.findMany({
         where: { employeeId: emp.id },
