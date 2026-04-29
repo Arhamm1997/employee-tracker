@@ -462,9 +462,7 @@ export function EmployeeDetailPage() {
   const liveActivity = latestActivities.find(a => a.employeeId === id);
 
   return (
-    <div className="flex gap-6">
-      {/* Main content */}
-      <div className="flex-1 space-y-6">
+    <div className="space-y-6">
       <Button variant="ghost" onClick={() => navigate("/dashboard/employees")} className="mb-2">
         <ArrowLeft className="w-4 h-4 mr-2" />
         Back to Employees
@@ -767,25 +765,64 @@ export function EmployeeDetailPage() {
         </TabsContent>
 
         {/* Screenshots Tab */}
-        <TabsContent value="screenshots">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {screenshots.length > 0 ? screenshots.map((ss, i) => (
-              <motion.div
-                key={ss.id}
-                whileHover={{ scale: 1.02 }}
-                className="cursor-pointer rounded-lg overflow-hidden border border-border bg-muted/30 shadow-sm"
-                onClick={() => setScreenshotModal(i)}
-              >
-                <img src={ss.imageUrl} alt="" className="w-full object-cover" style={{ height: "200px" }} />
-                <div className="px-3 py-2 flex items-center justify-between">
-                  <p className="truncate font-medium" style={{ fontSize: "12px" }}>{ss.app}</p>
-                  <p className="text-muted-foreground shrink-0 ml-2" style={{ fontSize: "11px" }}>
-                    {format(new Date(ss.timestamp), "h:mm a")}
-                  </p>
-                </div>
-              </motion.div>
-            )) : (
-              <div className="col-span-full text-center py-10">
+        <TabsContent value="screenshots" className="space-y-6">
+          {/* This employee's screenshots today */}
+          {screenshots.length > 0 && (
+            <div>
+              <p className="text-sm font-medium text-muted-foreground mb-3">{employee.name} — Today</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {screenshots.map((ss, i) => (
+                  <motion.div
+                    key={ss.id}
+                    whileHover={{ scale: 1.02 }}
+                    className="cursor-pointer rounded-lg overflow-hidden border border-border bg-muted/30 shadow-sm"
+                    onClick={() => setScreenshotModal(i)}
+                  >
+                    <img src={ss.imageUrl} alt="" className="w-full object-cover" style={{ height: "180px" }} />
+                    <div className="px-3 py-2 flex items-center justify-between">
+                      <p className="truncate font-medium" style={{ fontSize: "12px" }}>{ss.app}</p>
+                      <p className="text-muted-foreground shrink-0 ml-2" style={{ fontSize: "11px" }}>
+                        {format(new Date(ss.timestamp), "h:mm a")}
+                      </p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* All employees recent screenshots */}
+          <div>
+            <p className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
+              <Camera className="w-4 h-4" />
+              Recent Screenshots — All Employees
+            </p>
+            {recentScreenshots.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {recentScreenshots.map((ss) => (
+                  <motion.div
+                    key={ss.id}
+                    whileHover={{ scale: 1.02 }}
+                    className="cursor-pointer rounded-lg overflow-hidden border border-border bg-muted/30 shadow-sm"
+                    onClick={() => {
+                      if (ss.employeeId !== id) navigate(`/dashboard/employees/${ss.employeeId}`);
+                    }}
+                  >
+                    <img src={ss.imageUrl} alt="" className="w-full object-cover" style={{ height: "160px" }} />
+                    <div className="px-3 py-2">
+                      <p className="truncate font-medium" style={{ fontSize: "12px" }}>{ss.employeeName}</p>
+                      <div className="flex items-center justify-between">
+                        <p className="truncate text-muted-foreground" style={{ fontSize: "11px" }}>{ss.app}</p>
+                        <p className="text-muted-foreground shrink-0 ml-1" style={{ fontSize: "10px" }}>
+                          {format(new Date(ss.timestamp), "h:mm a")}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-10">
                 <Camera className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
                 <p className="text-muted-foreground">No screenshots available</p>
               </div>
@@ -1271,61 +1308,6 @@ export function EmployeeDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      </div>
-
-      {/* Right sidebar — Recent screenshots from all employees */}
-      {hasFeature(seatInfo, "screenshots") && (
-        <div className="w-64 shrink-0 space-y-4 max-h-[calc(100vh-100px)] overflow-y-auto">
-          <div className="sticky top-0 bg-background/80 backdrop-blur-sm py-2 z-10">
-            <h3 className="font-semibold flex items-center gap-2" style={{ fontSize: "14px" }}>
-              <Camera className="w-4 h-4" />
-              Recent Screenshots
-            </h3>
-            <p className="text-muted-foreground" style={{ fontSize: "11px" }}>All employees</p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            {recentScreenshots.length > 0 ? (
-              recentScreenshots.map((ss) => (
-                <motion.div
-                  key={ss.id}
-                  whileHover={{ scale: 1.05 }}
-                  className="relative group cursor-pointer rounded-md overflow-hidden border border-border bg-muted/30"
-                  onClick={() => {
-                    // If it's the current employee, scroll to screenshots tab
-                    if (ss.employeeId === id) {
-                      document.querySelector('[data-value="screenshots"]')?.click?.();
-                    } else {
-                      // Navigate to this employee
-                      navigate(`/dashboard/employees/${ss.employeeId}`);
-                    }
-                  }}
-                  title={`${ss.employeeName} - ${ss.app}`}
-                >
-                  <img
-                    src={ss.imageUrl}
-                    alt=""
-                    className="w-full aspect-video object-cover group-hover:opacity-75 transition-opacity"
-                  />
-                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 flex flex-col items-center justify-center p-1">
-                    <p className="text-white text-center truncate" style={{ fontSize: "10px" }}>
-                      {ss.employeeName}
-                    </p>
-                    <p className="text-white/70 text-center truncate" style={{ fontSize: "9px" }}>
-                      {ss.app}
-                    </p>
-                  </div>
-                </motion.div>
-              ))
-            ) : (
-              <div className="col-span-2 text-center py-6">
-                <Camera className="w-8 h-8 text-muted-foreground mx-auto mb-2 opacity-50" />
-                <p className="text-muted-foreground text-xs">No screenshots yet</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

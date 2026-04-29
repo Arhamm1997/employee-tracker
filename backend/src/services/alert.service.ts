@@ -158,7 +158,11 @@ export async function checkAfterHours(
   const endMinutes = endH * 60 + endM;
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
-  if (currentMinutes < startMinutes || currentMinutes > endMinutes) {
+  const isAfterHours = endMinutes < startMinutes
+    ? currentMinutes < startMinutes && currentMinutes > endMinutes
+    : currentMinutes < startMinutes || currentMinutes > endMinutes;
+
+  if (isAfterHours) {
     const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
     await createAlert({
       employeeId,

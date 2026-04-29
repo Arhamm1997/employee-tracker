@@ -166,7 +166,10 @@ export async function heartbeat(
     const workStartMins = startH * 60 + startM;
     const workEndMins = endH * 60 + endM;
     const currentMins = now.getHours() * 60 + now.getMinutes();
-    const isAfterHours = currentMins < workStartMins || currentMins > workEndMins;
+    // Cross-midnight schedule (e.g. 19:00–04:00): working if currentMins >= start OR <= end
+    const isAfterHours = workEndMins < workStartMins
+      ? currentMins < workStartMins && currentMins > workEndMins
+      : currentMins < workStartMins || currentMins > workEndMins;
 
     const activityTimestamp = timestamp ? new Date(timestamp) : now;
 
