@@ -202,6 +202,7 @@ export interface ScreenshotFilters {
   employeeId?: string;
   department?: string;
   date?: string;
+  limit?: string;
 }
 
 export const apiGetScreenshots = (filters: ScreenshotFilters = {}) => {
@@ -209,6 +210,7 @@ export const apiGetScreenshots = (filters: ScreenshotFilters = {}) => {
   if (filters.employeeId && filters.employeeId !== "All") params.set("employeeId", filters.employeeId);
   if (filters.department && filters.department !== "All") params.set("department", filters.department);
   if (filters.date) params.set("date", filters.date);
+  if (filters.limit) params.set("limit", filters.limit);
   const qs = params.toString();
   return get<Screenshot[]>(`/screenshots${qs ? `?${qs}` : ""}`);
 };

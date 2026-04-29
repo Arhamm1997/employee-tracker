@@ -1,12 +1,11 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { Camera, ChevronLeft, ChevronRight, Download, Maximize2 } from "lucide-react";
-import { Card, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "../components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Input } from "../components/ui/input";
-import { Dialog, DialogContent } from "../components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "../components/ui/dialog";
 import { Skeleton } from "../components/ui/skeleton";
 import { apiGetScreenshots, apiGetEmployees } from "../lib/api";
 import type { Screenshot, Employee } from "../lib/types";
@@ -33,10 +32,11 @@ export function ScreenshotsPage() {
 
   useEffect(() => {
     let cancelled = false;
+    setVisibleCount(20);
     const load = () => {
       if (cancelled) return;
-      apiGetScreenshots({ employeeId: employee, department: dept, date })
-        .then(data => { if (!cancelled) { setScreenshots(data); setVisibleCount(v => v); } })
+      apiGetScreenshots({ employeeId: employee, department: dept, date, limit: "100" })
+        .then(data => { if (!cancelled) setScreenshots(data); })
         .catch(() => {})
         .finally(() => { if (!cancelled) setLoading(false); });
     };
@@ -137,6 +137,8 @@ export function ScreenshotsPage() {
       {/* Fullscreen Modal */}
       <Dialog open={modal !== null} onOpenChange={() => setModal(null)}>
         <DialogContent className="max-w-5xl p-0">
+          <DialogTitle className="sr-only">Screenshot Viewer</DialogTitle>
+          <DialogDescription className="sr-only">View screenshot fullscreen with navigation controls</DialogDescription>
           {modal !== null && visible[modal] && (
             <div>
               <img src={visible[modal].imageUrl} alt="" className="w-full rounded-t-lg" />

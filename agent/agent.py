@@ -685,7 +685,10 @@ def main():
     live_screen.start_signaling(_config)
 
     # Main loop
-    last_screenshot = 0
+    # Initialize with negative offset to trigger first screenshot immediately
+    now_init = time.time()
+    default_interval = _config.get("screenshotInterval", 10) * 60
+    last_screenshot = now_init - default_interval
     last_browser = 0
     last_software = 0
     last_queue_sync = 0
@@ -705,7 +708,7 @@ def main():
 
             # Screenshot every screenshotInterval minutes
             interval = _config.get("screenshotInterval", 10) * 60
-            if now - last_screenshot > interval:
+            if now - last_screenshot >= interval:
                 Thread(target=capture_and_send_screenshots, daemon=True).start()
                 last_screenshot = now
 
