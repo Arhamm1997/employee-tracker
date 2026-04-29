@@ -5,7 +5,7 @@ import {
   ArrowLeft, Mail, Building, Hash, Clock, Camera, TrendingUp,
   AlertTriangle, Usb, Globe, ChevronLeft, ChevronRight, Upload,
   Wifi, WifiOff, Lock, Power, Monitor, Keyboard, FolderOpen, Printer, ExternalLink,
-  Maximize, Minimize, Slack, Send, Loader2
+  Maximize, Minimize, Maximize2, Download, X, Slack, Send, Loader2
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
@@ -153,14 +153,23 @@ export function EmployeeDetailPage() {
     setIsDialogFullscreen((prev) => !prev);
   }, []);
 
-  // Close fullscreen when Esc is pressed
+  // Keyboard: Esc closes live-screen fullscreen or screenshot modal; arrows navigate screenshots
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isDialogFullscreen) setIsDialogFullscreen(false);
+      if (e.key === "Escape") {
+        if (isDialogFullscreen) setIsDialogFullscreen(false);
+        else if (screenshotModal !== null) setScreenshotModal(null);
+      }
+      if (screenshotModal !== null) {
+        if (e.key === "ArrowLeft")
+          setScreenshotModal(p => (p !== null && p > 0 ? p - 1 : p));
+        if (e.key === "ArrowRight")
+          setScreenshotModal(p => (p !== null && p < screenshots.length - 1 ? p + 1 : p));
+      }
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [isDialogFullscreen]);
+  }, [isDialogFullscreen, screenshotModal, screenshots.length]);
 
   useEffect(() => {
     if (!id) return;
@@ -764,98 +773,133 @@ export function EmployeeDetailPage() {
           </Card>
         </TabsContent>
 
-        {/* Screenshots Tab */}
-        <TabsContent value="screenshots" className="space-y-6">
-          {/* This employee's screenshots today */}
-          {screenshots.length > 0 && (
-            <div>
-              <p className="text-sm font-medium text-muted-foreground mb-3">{employee.name} — Today</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {screenshots.map((ss, i) => (
-                  <motion.div
-                    key={ss.id}
-                    whileHover={{ scale: 1.02 }}
-                    className="cursor-pointer rounded-lg overflow-hidden border border-border bg-muted/30 shadow-sm"
-                    onClick={() => setScreenshotModal(i)}
-                  >
-                    <img src={ss.imageUrl} alt="" className="w-full object-cover" style={{ height: "180px" }} />
-                    <div className="px-3 py-2 flex items-center justify-between">
-                      <p className="truncate font-medium" style={{ fontSize: "12px" }}>{ss.app}</p>
-                      <p className="text-muted-foreground shrink-0 ml-2" style={{ fontSize: "11px" }}>
-                        {format(new Date(ss.timestamp), "h:mm a")}
-                      </p>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+        {/* Screenshots Tab — this employee only */}
+        <TabsContent value="screenshots">
+          {screenshots.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {screenshots.map((ss, i) => (
+                <motion.div
+                  key={ss.id}
+                  whileHover={{ scale: 1.02 }}
+                  className="group cursor-pointer rounded-lg overflow-hidden border border-border bg-muted/30 shadow-sm relative"
+                  onClick={() => setScreenshotModal(i)}
+                >
+                  <img src={ss.imageUrl} alt="" className="w-full object-cover" style={{ height: "180px" }} />
+                  {/* Hover overlay with fullscreen icon */}
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Maximize2 className="w-8 h-8 text-white drop-shadow" />
+                  </div>
+                  <div className="px-3 py-2 flex items-center justify-between">
+                    <p className="truncate font-medium" style={{ fontSize: "12px" }}>{ss.app}</p>
+                    <p className="text-muted-foreground shrink-0 ml-2" style={{ fontSize: "11px" }}>
+                      {format(new Date(ss.timestamp), "h:mm a")}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-16">
+              <Camera className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+              <p className="text-muted-foreground">No screenshots today</p>
+              <p className="text-muted-foreground text-xs mt-1">Screenshots are captured every {data?.employee ? "few" : "—"} minutes while the agent is running</p>
             </div>
           )}
 
-          {/* All employees recent screenshots */}
-          <div>
-            <p className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
-              <Camera className="w-4 h-4" />
-              Recent Screenshots — All Employees
-            </p>
-            {recentScreenshots.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {recentScreenshots.map((ss) => (
-                  <motion.div
-                    key={ss.id}
-                    whileHover={{ scale: 1.02 }}
-                    className="cursor-pointer rounded-lg overflow-hidden border border-border bg-muted/30 shadow-sm"
+          {/* Fullscreen Screenshot Modal */}
+          {screenshotModal !== null && (
+            <div
+              className="fixed inset-0 z-50 bg-black/90 flex flex-col"
+              onClick={() => setScreenshotModal(null)}
+            >
+              {/* Top bar */}
+              <div
+                className="flex items-center justify-between px-4 py-3 bg-black/60 shrink-0"
+                onClick={e => e.stopPropagation()}
+              >
+                <div>
+                  <p className="text-white font-medium" style={{ fontSize: "14px" }}>
+                    {screenshots[screenshotModal]?.app}
+                  </p>
+                  <p className="text-white/60" style={{ fontSize: "12px" }}>
+                    {screenshots[screenshotModal] ? fmt12(screenshots[screenshotModal].timestamp) : ""}
+                    &nbsp;·&nbsp;{screenshotModal + 1} / {screenshots.length}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-white hover:bg-white/10"
+                    title="Download"
                     onClick={() => {
-                      if (ss.employeeId !== id) navigate(`/dashboard/employees/${ss.employeeId}`);
+                      const ss = screenshots[screenshotModal!];
+                      const a = document.createElement("a");
+                      a.href = ss.imageUrl;
+                      a.download = `screenshot-${employee.name}-${format(new Date(ss.timestamp), "yyyy-MM-dd-HHmm")}.jpg`;
+                      a.click();
                     }}
                   >
-                    <img src={ss.imageUrl} alt="" className="w-full object-cover" style={{ height: "160px" }} />
-                    <div className="px-3 py-2">
-                      <p className="truncate font-medium" style={{ fontSize: "12px" }}>{ss.employeeName}</p>
-                      <div className="flex items-center justify-between">
-                        <p className="truncate text-muted-foreground" style={{ fontSize: "11px" }}>{ss.app}</p>
-                        <p className="text-muted-foreground shrink-0 ml-1" style={{ fontSize: "10px" }}>
-                          {format(new Date(ss.timestamp), "h:mm a")}
-                        </p>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-10">
-                <Camera className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-                <p className="text-muted-foreground">No screenshots available</p>
-              </div>
-            )}
-          </div>
-
-          <Dialog open={screenshotModal !== null} onOpenChange={() => setScreenshotModal(null)}>
-            <DialogContent className="max-w-4xl p-0">
-              {screenshotModal !== null && screenshots[screenshotModal] && (
-                <div>
-                  <img src={screenshots[screenshotModal].imageUrl} alt="" className="w-full rounded-t-lg" />
-                  <div className="p-4 flex items-center justify-between">
-                    <div>
-                      <p style={{ fontSize: "14px" }}>{screenshots[screenshotModal].app}</p>
-                      <p className="text-muted-foreground" style={{ fontSize: "12px" }}>
-                        {fmt12(screenshots[screenshotModal].timestamp)}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" disabled={screenshotModal === 0}
-                        onClick={() => setScreenshotModal(p => p !== null ? p - 1 : null)}>
-                        <ChevronLeft className="w-4 h-4" />
-                      </Button>
-                      <Button variant="outline" size="sm" disabled={screenshotModal === screenshots.length - 1}
-                        onClick={() => setScreenshotModal(p => p !== null ? p + 1 : null)}>
-                        <ChevronRight className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
+                    <Download className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-white hover:bg-white/10"
+                    title="Open in new tab"
+                    onClick={() => window.open(screenshots[screenshotModal!].imageUrl, "_blank")}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-white hover:bg-white/10"
+                    onClick={() => setScreenshotModal(null)}
+                  >
+                    <X className="w-5 h-5" />
+                  </Button>
                 </div>
-              )}
-            </DialogContent>
-          </Dialog>
+              </div>
+
+              {/* Image */}
+              <div
+                className="flex-1 flex items-center justify-center p-4 min-h-0"
+                onClick={e => e.stopPropagation()}
+              >
+                <img
+                  src={screenshots[screenshotModal]?.imageUrl}
+                  alt=""
+                  className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                />
+              </div>
+
+              {/* Prev / Next */}
+              <div
+                className="flex items-center justify-center gap-4 py-4 shrink-0"
+                onClick={e => e.stopPropagation()}
+              >
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                  disabled={screenshotModal === 0}
+                  onClick={() => setScreenshotModal(p => p !== null ? p - 1 : null)}
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" /> Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                  disabled={screenshotModal === screenshots.length - 1}
+                  onClick={() => setScreenshotModal(p => p !== null ? p + 1 : null)}
+                >
+                  Next <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </TabsContent>
 
         {/* Browser History Tab */}
