@@ -858,12 +858,13 @@ export async function uploadAvatar(
       return;
     }
 
-    if (emp.avatar && emp.avatar.startsWith("/uploads/")) {
-      const oldPath = path.join(process.cwd(), emp.avatar);
+    if (emp.avatar && (emp.avatar.startsWith("/uploads/") || emp.avatar.includes("/uploads/avatars/"))) {
+      const oldPath = path.join(process.cwd(), emp.avatar.replace(/^https?:\/\/[^/]+/, ""));
       if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
     }
 
-    const avatarUrl = `/uploads/avatars/${file.filename}`;
+    const baseUrl = (process.env.VPS_URL || `http://localhost:${process.env.PORT || 5001}`).replace(/\/api$/, "");
+    const avatarUrl = `${baseUrl}/uploads/avatars/${file.filename}`;
     await prisma.employee.update({ where: { id: emp.id }, data: { avatar: avatarUrl } });
 
     res.json({ success: true, avatarUrl });
