@@ -275,8 +275,8 @@ export async function heartbeat(
     const agentVersion = req.headers["x-agent-version"] as string | undefined;
     const minimumVersion = process.env.MINIMUM_AGENT_VERSION || "1.0.0";
 
-    // Track version on employee record
-    if (agentVersion && agentVersion !== emp.agentVersion) {
+    // Track version on employee record (upsert; skip comparison since middleware select omits this field)
+    if (agentVersion) {
       await prisma.employee.update({
         where: { id: emp.id },
         data: { agentVersion },
