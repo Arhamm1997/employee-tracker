@@ -2,10 +2,10 @@
 
 
 a = Analysis(
-    ['watchdog.py'],
+    ['agent_watchdog.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[('version.py', '.')],
     hiddenimports=['win32timezone', 'win32api', 'win32con'],
     hookspath=[],
     hooksconfig={},

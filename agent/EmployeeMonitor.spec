@@ -1,9 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_all
 
-datas = [('monitor.ico', '.')]
+datas = [('monitor.ico', '.'), ('version.py', '.')]
 binaries = []
-hiddenimports = ['win32timezone', 'win32api', 'win32con', 'win32com', 'win32com.client', 'pystray._win32', 'watchdog.observers.winapi', 'watchdog.observers', 'pynput.keyboard._win32', 'pynput.mouse._win32', 'websockets', 'websockets.legacy', 'websockets.legacy.client', 'websockets.legacy.server', 'websockets.connection', 'aioice', 'aioice.stun', 'aiortc', 'aiortc.codecs', 'aiortc.codecs.h264', 'aiortc.codecs.opus', 'aiortc.mediastreams', 'aiortc.sdp', 'aiortc.rtp', 'aiortc.rtcdtlstransport', 'aiortc.rtcicetransport', 'aiortc.rtcpeerconnection', 'numpy', 'numpy.core']
+hiddenimports = ['win32timezone', 'win32api', 'win32con', 'win32com', 'win32com.client', 'pystray._win32', 'watchdog.observers', 'watchdog.observers.winapi', 'watchdog.events', 'pynput.keyboard._win32', 'pynput.mouse._win32', 'websockets', 'websockets.legacy', 'websockets.legacy.client', 'websockets.legacy.server', 'websockets.connection', 'aioice', 'aioice.stun', 'aiortc', 'aiortc.codecs', 'aiortc.codecs.h264', 'aiortc.codecs.opus', 'aiortc.mediastreams', 'aiortc.sdp', 'aiortc.rtp', 'aiortc.rtcdtlstransport', 'aiortc.rtcicetransport', 'aiortc.rtcpeerconnection', 'numpy', 'numpy.core', 'pefile']
+tmp_ret = collect_all('watchdog')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 tmp_ret = collect_all('aiortc')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 tmp_ret = collect_all('aioice')
