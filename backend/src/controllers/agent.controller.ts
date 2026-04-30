@@ -271,9 +271,50 @@ export async function heartbeat(
       }
     }
 
+    // ── Version enforcement ─────────────────────────────────────────────────
+    const agentVersion = req.headers["x-agent-version"] as string | undefined;
+    const minimumVersion = process.env.MINIMUM_AGENT_VERSION || "1.0.0";
+
+    // Track version on employee record
+    if (agentVersion && agentVersion !== emp.agentVersion) {
+      await prisma.employee.update({
+        where: { id: emp.id },
+        data: { agentVersion },
+      });
+    }
+
+    let versionEnforcement: {
+      forceUpgrade: boolean;
+      minimumVersion: string;
+      graceMinutes: number;
+    } | undefined;
+
+    if (agentVersion && minimumVersion) {
+      const parseVersion = (v: string) =>
+        v.replace(/^v/, "").split(".").map((n) => parseInt(n, 10) || 0);
+      const [aMaj, aMin, aPatch] = parseVersion(agentVersion);
+      const [mMaj, mMin, mPatch] = parseVersion(minimumVersion);
+      const isBelowMin =
+        aMaj < mMaj ||
+        (aMaj === mMaj && aMin < mMin) ||
+        (aMaj === mMaj && aMin === mMin && aPatch < mPatch);
+
+      if (isBelowMin) {
+        logger.warn(
+          `Agent version ${agentVersion} below minimum ${minimumVersion} for employee ${emp.id}`
+        );
+        versionEnforcement = {
+          forceUpgrade: true,
+          minimumVersion,
+          graceMinutes: parseInt(process.env.VERSION_GRACE_MINUTES || "60", 10),
+        };
+      }
+    }
+
     res.json({
       success: true,
       settings: getSettingsForAgent(settings),
+      ...(versionEnforcement ? { versionEnforcement } : {}),
     });
   } catch (err) {
     next(err);

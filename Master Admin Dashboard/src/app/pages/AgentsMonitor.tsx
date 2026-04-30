@@ -7,8 +7,23 @@ import { Badge } from '../components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { StatCardSkeleton, TableSkeleton } from '../components/LoadingSkeleton';
 import { EmptyState } from '../components/EmptyState';
-import { Monitor, Circle, CircleOff, Clock } from 'lucide-react';
+import { Monitor, Circle, CircleOff, Clock, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
+
+function parseVersion(v: string): number[] {
+  return v.replace(/^v/, '').split('.').map((n) => parseInt(n, 10) || 0);
+}
+
+function isOutdated(agentVersion: string | null | undefined, minimumVersion: string): boolean {
+  if (!agentVersion) return true;
+  const [aMaj, aMin, aPatch] = parseVersion(agentVersion);
+  const [mMaj, mMin, mPatch] = parseVersion(minimumVersion);
+  return (
+    aMaj < mMaj ||
+    (aMaj === mMaj && aMin < mMin) ||
+    (aMaj === mMaj && aMin === mMin && aPatch < mPatch)
+  );
+}
 
 export default function AgentsMonitor() {
   const [statusFilter, setStatusFilter] = useState('all');
@@ -19,6 +34,20 @@ export default function AgentsMonitor() {
     queryFn: async () => {
       const response = await api.get('/admin/agents/stats');
       return response.data.data;
+    },
+    refetchInterval: 30000,
+  });
+
+  const { data: upgradeStatus } = useQuery({
+    queryKey: ['upgrade-status'],
+    queryFn: async () => {
+      const response = await api.get('/admin/agent-versions/upgrade-status');
+      return response.data as {
+        minimumVersion: string;
+        totalAgents: number;
+        outdatedCount: number;
+        versionDistribution: Record<string, number>;
+      };
     },
     refetchInterval: 30000,
   });
@@ -37,6 +66,9 @@ export default function AgentsMonitor() {
     refetchInterval: 30000,
   });
 
+  const minimumVersion = upgradeStatus?.minimumVersion ?? '1.0.0';
+  const outdatedCount = upgradeStatus?.outdatedCount ?? 0;
+
   const statCards = [
     { title: 'Total Agents', value: stats?.total || 0, icon: Monitor, color: 'text-blue-600', bgColor: 'bg-blue-50' },
     { title: 'Online', value: stats?.online || 0, icon: Circle, color: 'text-green-600', bgColor: 'bg-green-50' },
@@ -46,15 +78,26 @@ export default function AgentsMonitor() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'online':
-        return 'bg-green-500';
-      case 'offline':
-        return 'bg-gray-500';
-      case 'idle':
-        return 'bg-yellow-500';
-      default:
-        return 'bg-gray-500';
+      case 'online': return 'bg-green-500';
+      case 'offline': return 'bg-gray-500';
+      case 'idle': return 'bg-yellow-500';
+      default: return 'bg-gray-500';
     }
+  };
+
+  const getVersionBadge = (version: string | null | undefined) => {
+    if (!version) {
+      return <Badge className="bg-red-100 text-red-700 border border-red-200">unknown</Badge>;
+    }
+    if (isOutdated(version, minimumVersion)) {
+      return (
+        <span className="inline-flex items-center gap-1">
+          <Badge className="bg-orange-100 text-orange-700 border border-orange-200">{version}</Badge>
+          <AlertTriangle className="w-3.5 h-3.5 text-orange-500" />
+        </span>
+      );
+    }
+    return <Badge className="bg-green-100 text-green-700 border border-green-200">{version}</Badge>;
   };
 
   return (
@@ -63,6 +106,20 @@ export default function AgentsMonitor() {
         <h1 className="text-3xl font-bold text-gray-900">Agents Monitor</h1>
         <p className="text-gray-500 mt-1">Real-time agent monitoring and status</p>
       </div>
+
+      {outdatedCount > 0 && (
+        <div className="flex items-start gap-3 rounded-xl border border-orange-200 bg-orange-50 px-5 py-4">
+          <AlertTriangle className="w-5 h-5 text-orange-500 mt-0.5 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-orange-800">
+              {outdatedCount} agent{outdatedCount !== 1 ? 's' : ''} running below minimum version ({minimumVersion})
+            </p>
+            <p className="text-xs text-orange-700 mt-0.5">
+              Go to <strong>Agent Versions</strong> to force-upgrade outdated agents.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {statsLoading ? (
@@ -120,7 +177,10 @@ export default function AgentsMonitor() {
                 </thead>
                 <tbody>
                   {data.data.map((agent) => (
-                    <tr key={agent.id} className="border-b hover:bg-gray-50">
+                    <tr
+                      key={agent.id}
+                      className={`border-b hover:bg-gray-50 ${isOutdated(agent.version, minimumVersion) ? 'bg-orange-50/40' : ''}`}
+                    >
                       <td className="py-3 px-4 text-sm font-mono">{agent.machineId}</td>
                       <td className="py-3 px-4 text-sm">{agent.companyName}</td>
                       <td className="py-3 px-4 text-sm">{agent.employeeName}</td>
@@ -134,7 +194,7 @@ export default function AgentsMonitor() {
                       </td>
                       <td className="py-3 px-4 text-sm">{format(new Date(agent.lastSeen), 'dd MMM yyyy HH:mm')}</td>
                       <td className="py-3 px-4 text-sm font-mono">{agent.ipAddress}</td>
-                      <td className="py-3 px-4 text-sm">{agent.version}</td>
+                      <td className="py-3 px-4 text-sm">{getVersionBadge(agent.version)}</td>
                       <td className="py-3 px-4 text-sm">{agent.os}</td>
                     </tr>
                   ))}

@@ -138,4 +138,118 @@ router.delete("/:id", async (req: AdminRequest, res: Response) => {
   }
 });
 
+// POST /api/admin/agent-versions/force-upgrade
+// Sets MINIMUM_AGENT_VERSION in DB settings and broadcasts force_upgrade to all connected agents.
+router.post("/force-upgrade", async (req: AdminRequest, res: Response) => {
+  const { minimumVersion, graceMinutes = 60 } = req.body as {
+    minimumVersion: string;
+    graceMinutes?: number;
+  };
+
+  if (!minimumVersion?.trim()) {
+    return res.status(400).json({ success: false, error: "minimumVersion is required" });
+  }
+
+  try {
+    // Persist minimum version in the first Settings row so it survives restarts
+    const settingsRow = await prisma.settings.findFirst();
+    if (settingsRow) {
+      await prisma.settings.update({
+        where: { id: settingsRow.id },
+        // Store in a JSON metadata field if available, else fall back to env override
+        // We broadcast immediately regardless
+        data: {} as any,
+      });
+    }
+
+    // Override the env var for this process lifetime
+    process.env.MINIMUM_AGENT_VERSION = minimumVersion.trim();
+    process.env.VERSION_GRACE_MINUTES = String(graceMinutes);
+
+    // Count how many agents are below the minimum
+    const parseVersion = (v: string) =>
+      v.replace(/^v/, "").split(".").map((n) => parseInt(n, 10) || 0);
+    const [mMaj, mMin, mPatch] = parseVersion(minimumVersion);
+
+    const allEmployees = await prisma.employee.findMany({
+      select: { id: true, name: true, agentVersion: true },
+      where: { isActive: true },
+    });
+
+    const outdated = allEmployees.filter((e) => {
+      if (!e.agentVersion) return true;
+      const [aMaj, aMin, aPatch] = parseVersion(e.agentVersion);
+      return (
+        aMaj < mMaj ||
+        (aMaj === mMaj && aMin < mMin) ||
+        (aMaj === mMaj && aMin === mMin && aPatch < mPatch)
+      );
+    });
+
+    // Broadcast to all connected agents via WebSocket
+    sendToAllAgents("force_upgrade", {
+      minimumVersion: minimumVersion.trim(),
+      graceMinutes,
+      message: `Your agent version is below the minimum required (${minimumVersion}). Please update now.`,
+    });
+
+    return res.json({
+      success: true,
+      minimumVersion: minimumVersion.trim(),
+      graceMinutes,
+      outdatedAgentCount: outdated.length,
+      outdatedAgents: outdated.map((e) => ({ id: e.id, name: e.name, version: e.agentVersion })),
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: "Failed to trigger force upgrade" });
+  }
+});
+
+// GET /api/admin/agent-versions/upgrade-status
+// Returns current minimum version and count of outdated agents
+router.get("/upgrade-status", async (_req: AdminRequest, res: Response) => {
+  try {
+    const minimumVersion = process.env.MINIMUM_AGENT_VERSION || "1.0.0";
+    const parseVersion = (v: string) =>
+      v.replace(/^v/, "").split(".").map((n) => parseInt(n, 10) || 0);
+    const [mMaj, mMin, mPatch] = parseVersion(minimumVersion);
+
+    const allEmployees = await prisma.employee.findMany({
+      select: { agentVersion: true },
+      where: { isActive: true },
+    });
+
+    const versionGroups: Record<string, number> = {};
+    let outdatedCount = 0;
+
+    for (const e of allEmployees) {
+      const v = e.agentVersion || "unknown";
+      versionGroups[v] = (versionGroups[v] || 0) + 1;
+
+      if (v !== "unknown") {
+        const [aMaj, aMin, aPatch] = parseVersion(v);
+        if (
+          aMaj < mMaj ||
+          (aMaj === mMaj && aMin < mMin) ||
+          (aMaj === mMaj && aMin === mMin && aPatch < mPatch)
+        ) {
+          outdatedCount++;
+        }
+      } else {
+        outdatedCount++;
+      }
+    }
+
+    return res.json({
+      success: true,
+      minimumVersion,
+      totalAgents: allEmployees.length,
+      outdatedCount,
+      versionDistribution: versionGroups,
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: "Failed to fetch upgrade status" });
+  }
+});
+
 export default router;

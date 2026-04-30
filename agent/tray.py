@@ -10,7 +10,7 @@ except ImportError:
     Image = ImageDraw = None
     log.warning("pystray/Pillow not available - tray icon disabled")
 
-VERSION = "1.0.0"
+from version import AGENT_VERSION as VERSION
 _icon = None
 _connected = False
 

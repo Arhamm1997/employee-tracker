@@ -1,39 +1,20 @@
 """
-File activity monitor - tracks file create/modify/delete/rename events
-in common user directories (Desktop, Documents, Downloads, Pictures).
-Uses the watchdog library.
+File activity monitor — tracks create/modify/delete/rename events in common
+user directories (Desktop, Documents, Downloads, Pictures).
 
-NOTE: The agent directory contains a local watchdog.py (process watchdog) that
-shadows the watchdog package. We temporarily remove the agent dir from sys.path
-to import the real package, then restore it.
+Uses the watchdog pip package. The previous local watchdog.py has been renamed
+to agent_watchdog.py so there is no longer a naming conflict.
 """
 
 import os
-import sys
 import threading
 from datetime import datetime, timezone
 from logger import log
 
 try:
-    # Temporarily remove directories that contain the local watchdog.py
-    # so we import the installed watchdog package, not the local file.
-    _agent_dir = os.path.dirname(os.path.abspath(__file__))
-    _removed: list[str] = []
-    _new_path: list[str] = []
-    for _p in sys.path:
-        _abs = os.path.abspath(_p) if _p else _p
-        if _abs == _agent_dir or _p in ("", "."):
-            _removed.append(_p)
-        else:
-            _new_path.append(_p)
-    sys.path[:] = _new_path
-    try:
-        from watchdog.observers import Observer
-        from watchdog.events import FileSystemEventHandler, FileSystemEvent
-        WATCHDOG_AVAILABLE = True
-    finally:
-        # Restore original path
-        sys.path[:] = _removed + sys.path
+    from watchdog.observers import Observer
+    from watchdog.events import FileSystemEventHandler, FileSystemEvent
+    WATCHDOG_AVAILABLE = True
 except ImportError:
     WATCHDOG_AVAILABLE = False
     log.warning("watchdog package not available - file monitor disabled")
@@ -42,7 +23,6 @@ _lock = threading.Lock()
 _buffer: list[dict] = []
 _observer = None
 
-# Directories to watch
 WATCH_DIRS = [
     os.path.expanduser("~/Desktop"),
     os.path.expanduser("~/Documents"),
@@ -50,7 +30,6 @@ WATCH_DIRS = [
     os.path.expanduser("~/Pictures"),
 ]
 
-# Skip noisy/temp extensions
 _IGNORE_EXTENSIONS = {
     ".tmp", ".temp", ".~tmp", ".lnk", ".ini", ".db", ".log",
     ".bak", ".crdownload", ".part", ".partial",
@@ -102,8 +81,7 @@ if WATCHDOG_AVAILABLE:
         def on_moved(self, event: "FileSystemEvent") -> None:
             if not event.is_directory:
                 dest = getattr(event, "dest_path", "")
-                combined = f"{event.src_path} → {dest}"
-                _add_event("renamed", combined)
+                _add_event("renamed", f"{event.src_path} → {dest}")
 
 
 def get_and_clear() -> list[dict]:
@@ -120,7 +98,7 @@ def start_file_monitor() -> None:
         log.warning("File monitor: watchdog unavailable, skipping")
         return
     if _observer is not None:
-        return  # Already running
+        return
     try:
         handler = _Handler()
         _observer = Observer()

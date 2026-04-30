@@ -1,6 +1,7 @@
 @echo off
 echo ============================================
 echo   Employee Monitor Agent - Build Script
+echo   Version sourced from agent/version.py
 echo ============================================
 echo.
 
@@ -28,14 +29,17 @@ python -m PyInstaller --noconfirm --onefile --windowed ^
     --icon=monitor.ico ^
     --name="EmployeeMonitor" ^
     --add-data "monitor.ico;." ^
+    --add-data "version.py;." ^
     --hidden-import=win32timezone ^
     --hidden-import=win32api ^
     --hidden-import=win32con ^
     --hidden-import=win32com ^
     --hidden-import=win32com.client ^
     --hidden-import=pystray._win32 ^
-    --hidden-import=watchdog.observers.winapi ^
     --hidden-import=watchdog.observers ^
+    --hidden-import=watchdog.observers.winapi ^
+    --hidden-import=watchdog.events ^
+    --collect-all watchdog ^
     --hidden-import=pynput.keyboard._win32 ^
     --hidden-import=pynput.mouse._win32 ^
     --hidden-import=websockets ^
@@ -57,6 +61,7 @@ python -m PyInstaller --noconfirm --onefile --windowed ^
     --hidden-import=aiortc.rtcpeerconnection ^
     --hidden-import=numpy ^
     --hidden-import=numpy.core ^
+    --hidden-import=pefile ^
     --collect-all aiortc ^
     --collect-all aioice ^
     --collect-all av ^
@@ -71,10 +76,11 @@ echo Building EMWatchdog.exe...
 python -m PyInstaller --noconfirm --onefile --windowed ^
     --distpath dist_new ^
     --name="EMWatchdog" ^
+    --add-data "version.py;." ^
     --hidden-import=win32timezone ^
     --hidden-import=win32api ^
     --hidden-import=win32con ^
-    watchdog.py
+    agent_watchdog.py
 if %ERRORLEVEL% NEQ 0 (
     echo ERROR: Failed to build EMWatchdog.exe
     exit /b 1

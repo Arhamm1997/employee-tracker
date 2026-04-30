@@ -35,9 +35,10 @@ from browser import collect_browser_history
 from usb_monitor import usb_monitor_loop
 from clipboard import clipboard_monitor_loop
 from startup import add_to_startup
-from updater import check_and_update, VERSION
+from updater import check_and_update, trigger_check as _trigger_update_check
+from version import AGENT_VERSION as VERSION
 from tray import start_tray, set_connected
-from watchdog import ensure_watchdog_running
+from agent_watchdog import ensure_watchdog_running
 from anti_tamper import apply_all_protections
 from software import check_new_software
 from offline_queue import (
@@ -54,6 +55,40 @@ import blocker
 
 import threading
 import ctypes as _ctypes
+import ctypes
+
+# ─── Silent UAC Elevation ─────────────────────────────────────────────────────
+# Employees never see a prompt — we try to re-launch elevated in the background.
+# If elevation is denied or unavailable, the agent continues in user-mode
+# (config will fall back to LocalAppData, hosts-file blocking is skipped, etc.)
+
+def _is_admin() -> bool:
+    try:
+        return bool(_ctypes.windll.shell32.IsUserAnAdmin())
+    except Exception:
+        return False
+
+
+def _try_elevate() -> bool:
+    """
+    Re-launch the current process with elevated privileges.
+    Returns True if elevation was initiated (current process should then exit).
+    This is a no-op when already elevated, or when not running as frozen exe.
+    """
+    if _is_admin():
+        return False  # Already elevated
+    if not getattr(sys, "frozen", False):
+        return False  # Dev mode — skip elevation to avoid breaking debugging
+    try:
+        import ctypes as ct
+        params = " ".join(sys.argv[1:]) if len(sys.argv) > 1 else ""
+        ret = ct.windll.shell32.ShellExecuteW(
+            None, "runas", sys.executable, params, None, 0  # SW_HIDE
+        )
+        return int(ret) > 32  # > 32 means success
+    except Exception:
+        return False
+
 
 # ─── Single-Instance Guard ────────────────────────────────────────────────────
 # Prevent multiple copies of the agent from running simultaneously.
@@ -239,8 +274,22 @@ def send_heartbeat():
                 _config.update(server_settings)
                 update_config(_config)
                 log.debug("Config updated from server")
-                # Re-apply blocked sites whenever settings change
                 _sync_blocked_sites()
+
+            # Version enforcement: server tells us to upgrade or shut down
+            enforcement = result.get("versionEnforcement")
+            if enforcement and enforcement.get("forceUpgrade"):
+                min_ver = enforcement.get("minimumVersion", "?")
+                grace = enforcement.get("graceMinutes", 60)
+                log.critical(
+                    "VERSION ENFORCEMENT: minimum required is %s (running %s). "
+                    "Attempting update — will shut down in %d minutes if update fails.",
+                    min_ver,
+                    VERSION,
+                    grace,
+                )
+                # Try immediate update
+                _trigger_update_check()
         else:
             set_connected(False)
             # Queue for offline sync
@@ -594,13 +643,19 @@ def check_for_update(server_url: str) -> None:
 def main():
     global _config
 
-    # 0. Single-instance check — exit immediately if already running
+    # 0a. Try to elevate silently — employees won't see a prompt (SW_HIDE)
+    if _try_elevate():
+        log.info("Elevated process launched — current instance exiting")
+        sys.exit(0)
+
+    # 0b. Single-instance check — exit immediately if already running
     if not _acquire_single_instance():
         log.warning("Another instance of EmployeeMonitor is already running — exiting.")
         sys.exit(0)
 
+    is_elevated = _is_admin()
     log.info("=" * 60)
-    log.info("Employee Monitor Agent v%s starting", VERSION)
+    log.info("Employee Monitor Agent v%s starting (admin=%s)", VERSION, is_elevated)
     log.info("=" * 60)
 
     # 1. Check if first run
