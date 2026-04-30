@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
 import { authenticateAgent } from "../middleware/agentAuth.middleware";
 import {
@@ -21,6 +21,7 @@ import {
 } from "../controllers/agent.controller";
 import { logAgentError } from "../controllers/system.controller";
 import { checkAgentFeature } from "../middleware/agentFeature.middleware";
+import prisma from "../lib/prisma";
 
 const router = Router();
 
@@ -32,6 +33,30 @@ const agentLimit = rateLimit({
 });
 
 router.use(agentLimit);
+
+// ── Public: latest version check (no auth — called before token registration) ─
+router.get("/latest-version", async (_req: Request, res: Response) => {
+  try {
+    const latest = await prisma.agentVersion.findFirst({
+      where: { isLatest: true },
+      orderBy: { createdAt: "desc" },
+    });
+    if (!latest) {
+      res.json({ version: null, downloadUrl: null, checksum: null });
+      return;
+    }
+    const vpsUrl = process.env.VPS_URL || `http://localhost:${process.env.PORT || 5001}`;
+    res.json({
+      version: latest.version,
+      downloadUrl: `${vpsUrl}${latest.filePath}`,
+      checksum: latest.checksum,
+      releaseNotes: latest.releaseNotes ?? null,
+    });
+  } catch {
+    res.status(500).json({ version: null, downloadUrl: null, checksum: null });
+  }
+});
+
 router.use(authenticateAgent);
 
 router.get("/verify", verifyAgent);

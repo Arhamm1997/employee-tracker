@@ -283,6 +283,15 @@ export const apiGetReports = (filters: ReportFilters) => {
 
 // ─── Employee management extras ──────────────────────────────────────────────
 
+export interface UpdateEmployeePayload {
+  name?: string;
+  email?: string;
+  department?: string;
+}
+
+export const apiUpdateEmployee = (id: string, data: UpdateEmployeePayload) =>
+  put<{ success: boolean; employee: Employee }>(`/employees/${id}`, data);
+
 export const apiDeleteEmployee = (id: string) => del<{ success: boolean }>(`/employees/${id}`);
 
 export const apiResetAllData = () => del<{ success: boolean; message: string }>("/employees/reset-all-data");

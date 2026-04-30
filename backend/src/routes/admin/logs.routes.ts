@@ -8,18 +8,21 @@ import logger from "../../lib/logger";
 const router = Router();
 router.use(requireAdmin);
 
+const ERRORS_DIR = path.resolve(process.cwd(), "..", ".errors");
+
+type ErrorSource = "agent" | "server" | "api" | "frontend" | "portal";
+
 interface ErrorLogEntry {
   id: string;
   timestamp: string;
-  source: "agent" | "server" | "api";
+  source: ErrorSource;
   severity: "error" | "warning" | "info";
   message: string;
   stackTrace?: string;
 }
 
-function parseErrorLog(): ErrorLogEntry[] {
-  const logPath = path.resolve(process.cwd(), "..", ".errors", "backend-errors.log");
-
+function parseLogFile(filename: string, defaultSource: ErrorSource): ErrorLogEntry[] {
+  const logPath = path.join(ERRORS_DIR, filename);
   if (!fs.existsSync(logPath)) return [];
 
   const content = fs.readFileSync(logPath, "utf-8");
@@ -27,24 +30,22 @@ function parseErrorLog(): ErrorLogEntry[] {
   const separator = "=".repeat(80);
   const blocks = content.split(separator).map((b) => b.trim()).filter(Boolean);
 
-  let idCounter = 0;
-
   for (const block of blocks) {
     const lines = block.split("\n").filter(Boolean);
     if (lines.length === 0) continue;
 
-    // Match: [2026-03-12 06:12:00] [ERROR] message
+    // Match: [TIMESTAMP] [LEVEL] [optional-code] message
     const firstLine = lines[0];
     const match = firstLine.match(
-      /\[(\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?)\]\s+\[(\w+)\]\s+(.*)/
+      /\[(\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?)\]\s+\[(\w+)\](?:\s+\[([^\]]+)\])?\s*(.*)/
     );
     if (!match) continue;
 
-    const [, ts, level, msg] = match;
+    const [, ts, level, , msg] = match;
 
     let timestamp: string;
     try {
-      timestamp = new Date(ts.replace(" ", "T")).toISOString();
+      timestamp = new Date(ts.replace(" ", "T") + (ts.includes("Z") ? "" : "Z")).toISOString();
     } catch {
       timestamp = new Date().toISOString();
     }
@@ -56,26 +57,41 @@ function parseErrorLog(): ErrorLogEntry[] {
         ? "warning"
         : "info";
 
-    const stackTrace = lines.slice(1).join("\n").trim() || undefined;
+    // Collect stack trace + metadata lines
+    const restLines = lines.slice(1).join("\n").trim();
+    const stackTrace = restLines || undefined;
 
-    const msgLower = (msg + (stackTrace ?? "")).toLowerCase();
-    const source: "agent" | "server" | "api" = msgLower.includes("agent")
-      ? "agent"
-      : msgLower.includes("api") || msgLower.includes("route")
-      ? "api"
-      : "server";
+    // Auto-detect source for backend log only; others use their default
+    let source: ErrorSource = defaultSource;
+    if (defaultSource === "server") {
+      const msgLower = (msg + (stackTrace ?? "")).toLowerCase();
+      if (msgLower.includes("agent")) source = "agent";
+      else if (msgLower.includes("api") || msgLower.includes("route")) source = "api";
+    }
 
     entries.push({
-      id: String(++idCounter),
+      id: "",
       timestamp,
       source,
       severity,
-      message: msg.trim() || stackTrace?.split("\n")[0] || "Unknown error",
+      message: msg.trim() || restLines?.split("\n")[0] || "Unknown error",
       stackTrace,
     });
   }
 
-  return entries.reverse(); // Most recent first
+  return entries;
+}
+
+function getAllErrorLogs(): ErrorLogEntry[] {
+  const backend  = parseLogFile("backend-errors.log",  "server");
+  const agent    = parseLogFile("agent-errors.log",    "agent");
+  const frontend = parseLogFile("frontend-errors.log", "frontend");
+  const portal   = parseLogFile("portal-errors.log",   "portal");
+
+  const all = [...backend, ...agent, ...frontend, ...portal]
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+  return all.map((e, i) => ({ ...e, id: String(i + 1) }));
 }
 
 // ── GET /admin/logs/errors ────────────────────────────────────────────────────
@@ -88,7 +104,7 @@ router.get("/errors", (req: AdminRequest, res: Response) => {
     const startDate = req.query.startDate ? new Date(req.query.startDate as string) : null;
     const endDate = req.query.endDate ? new Date(req.query.endDate as string) : null;
 
-    let logs = parseErrorLog();
+    let logs = getAllErrorLogs();
 
     if (severityFilter && severityFilter !== "all") {
       logs = logs.filter((l) => l.severity === severityFilter);

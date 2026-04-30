@@ -49,7 +49,7 @@ export default function ErrorLogs() {
 
   const handleExportCSV = () => {
     if (!data?.data) return;
-    
+
     const headers = ['Timestamp', 'Company', 'Source', 'Severity', 'Message'];
     const rows = data.data.map(log => [
       format(new Date(log.timestamp), 'dd MMM yyyy HH:mm'),
@@ -58,13 +58,30 @@ export default function ErrorLogs() {
       log.severity,
       log.message.replace(/,/g, ';'),
     ]);
-    
+
     const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `error-logs-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadText = () => {
+    if (!data?.data) return;
+    const lines = data.data.map(log => {
+      const ts = format(new Date(log.timestamp), 'dd MMM yyyy HH:mm:ss');
+      const stack = log.stackTrace ? `\n  Stack: ${log.stackTrace.split('\n').join('\n    ')}` : '';
+      return `[${ts}] [${log.severity.toUpperCase()}] [${log.source}]${log.companyName ? ` [${log.companyName}]` : ''}\n  ${log.message}${stack}`;
+    });
+    const text = `Employee Monitor - Error Report\nGenerated: ${format(new Date(), 'dd MMM yyyy HH:mm:ss')}\nTotal: ${data.data.length} entries\n${'='.repeat(80)}\n\n${lines.join('\n\n' + '─'.repeat(60) + '\n\n')}`;
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `error-report-${format(new Date(), 'yyyy-MM-dd-HHmm')}.txt`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -95,6 +112,10 @@ export default function ErrorLogs() {
           <Button variant="outline" onClick={() => refetch()}>
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
+          </Button>
+          <Button variant="outline" onClick={handleDownloadText}>
+            <Download className="w-4 h-4 mr-2" />
+            Download .txt
           </Button>
           <Button onClick={handleExportCSV}>
             <Download className="w-4 h-4 mr-2" />

@@ -23,7 +23,7 @@ import {
 import {
   apiGetEmployeeDetail, apiUploadAvatar, apiSendRemoteCommand,
   apiGetConnectionHistory, apiGetKeylogHistory, apiGetFileActivity, apiGetPrintLogs,
-  apiSendSlackDirectMessage, apiGetScreenshots,
+  apiSendSlackDirectMessage, apiGetScreenshots, apiUpdateEmployee,
   type EmployeeDetailData,
 } from "../lib/api";
 import type { ConnectionEvent, KeylogEntry, FileActivityEntry, PrintLogEntry, Screenshot } from "../lib/types";
@@ -133,10 +133,15 @@ export function EmployeeDetailPage() {
   const [printLogs, setPrintLogs] = useState<PrintLogEntry[]>([]);
   const [remoteCommandDialog, setRemoteCommandDialog] = useState<"lock" | "shutdown" | null>(null);
   const [sendingCommand, setSendingCommand] = useState(false);
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editDept, setEditDept] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
   const [slackMessageDialog, setSlackMessageDialog] = useState(false);
   const [slackMessage, setSlackMessage] = useState("");
   const [sendingSlackMessage, setSendingSlackMessage] = useState(false);
-  const [recentScreenshots, setRecentScreenshots] = useState<Screenshot[]>([]);
+  const [employeeScreenshots, setEmployeeScreenshots] = useState<Screenshot[]>([]);
 
   // ─── Live screen WebRTC state ─────────────────────────────────────────────
   const [liveScreenOpen, setLiveScreenOpen] = useState(false);
@@ -154,7 +159,7 @@ export function EmployeeDetailPage() {
   }, []);
 
   // Keyboard: Esc closes live-screen fullscreen or screenshot modal; arrows navigate screenshots
-  const ssCount = data?.screenshots?.length ?? 0;
+  const ssCount = employeeScreenshots.length > 0 ? employeeScreenshots.length : (data?.screenshots?.length ?? 0);
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -200,14 +205,14 @@ export function EmployeeDetailPage() {
     };
   }, [id]);
 
-  // ─── Sidebar: recent screenshots from all employees ───────────────────────
+  // ─── Load screenshots for THIS employee only ─────────────────────────────
   useEffect(() => {
-    if (!hasFeature(seatInfo, "screenshots")) return;
+    if (!id || !hasFeature(seatInfo, "screenshots")) return;
     let cancelled = false;
     const loadScreenshots = async () => {
       try {
-        const shots = await apiGetScreenshots({});
-        if (!cancelled) setRecentScreenshots(shots.slice(0, 20));
+        const shots = await apiGetScreenshots({ employeeId: id, limit: "100" });
+        if (!cancelled) setEmployeeScreenshots(shots);
       } catch {
         // silently fail
       }
@@ -218,7 +223,7 @@ export function EmployeeDetailPage() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [seatInfo]);
+  }, [id, seatInfo]);
 
   // ─── WebRTC live screen: request → offer → answer → P2P stream ────────────
   useEffect(() => {
@@ -422,6 +427,33 @@ export function EmployeeDetailPage() {
     }
   };
 
+  const openEditProfile = () => {
+    if (!data?.employee) return;
+    setEditName(data.employee.name);
+    setEditEmail(data.employee.email || "");
+    setEditDept(data.employee.department || "");
+    setEditProfileOpen(true);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!id || !editName.trim()) return;
+    setSavingProfile(true);
+    try {
+      const result = await apiUpdateEmployee(id, {
+        name: editName.trim(),
+        email: editEmail.trim() || undefined,
+        department: editDept.trim() || undefined,
+      });
+      setData(prev => prev ? { ...prev, employee: { ...prev.employee, ...result.employee } } : prev);
+      setEditProfileOpen(false);
+      toast.success("Profile updated successfully!");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update profile");
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
 
   if (loading) {
     return (
@@ -446,7 +478,9 @@ export function EmployeeDetailPage() {
     );
   }
 
-  const { employee, screenshots, browserHistory, alerts, usbEvents, topApps, productivity, hourlyActivity, timeline, heatmap } = data;
+  const { employee, screenshots: detailScreenshots, browserHistory, alerts, usbEvents, topApps, productivity, hourlyActivity, timeline, heatmap } = data;
+  // Use the dedicated employee-filtered screenshots (richer, up to 100); fall back to detail API data
+  const screenshots = employeeScreenshots.length > 0 ? employeeScreenshots : detailScreenshots;
 
   const statusColor = employee.status === "online" ? "#22c55e" : employee.status === "idle" ? "#f59e0b" : "#ef4444";
 
@@ -515,6 +549,9 @@ export function EmployeeDetailPage() {
                 <Badge style={{ backgroundColor: statusColor, color: "white", fontSize: "12px" }}>
                   {employee.status}
                 </Badge>
+                <Button size="sm" variant="outline" className="gap-1 h-7 px-2 text-xs" onClick={openEditProfile}>
+                  Edit Profile
+                </Button>
                 {liveActivity && (
                   <Badge className="bg-[#6366f1] text-white" style={{ fontSize: "11px" }}>
                     Live: {liveActivity.app}
@@ -1275,6 +1312,52 @@ export function EmployeeDetailPage() {
               </div>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Profile Dialog */}
+      <Dialog open={editProfileOpen} onOpenChange={setEditProfileOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Employee Profile</DialogTitle>
+            <DialogDescription>Update {employee.name}'s profile information.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Name</label>
+              <input
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+                value={editName}
+                onChange={e => setEditName(e.target.value)}
+                placeholder="Full name"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Email</label>
+              <input
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+                value={editEmail}
+                onChange={e => setEditEmail(e.target.value)}
+                placeholder="Email address"
+                type="email"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Department</label>
+              <input
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+                value={editDept}
+                onChange={e => setEditDept(e.target.value)}
+                placeholder="Department"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditProfileOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveProfile} disabled={savingProfile || !editName.trim()}>
+              {savingProfile ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</> : "Save Changes"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

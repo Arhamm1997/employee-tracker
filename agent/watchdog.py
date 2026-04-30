@@ -15,6 +15,31 @@ AGENT_EXE_NAME = "EmployeeMonitor.exe"
 WATCHDOG_EXE_NAME = "EMWatchdog.exe"
 CHECK_INTERVAL = 60  # seconds — agent needs up to 120s network wait on startup
 
+_STATE_FILE = r"C:\ProgramData\EmployeeMonitor\agent_state.txt"
+_MAX_RESTARTS_PER_HOUR = 3
+_restart_timestamps: list = []  # timestamps of recent restarts
+
+
+def _read_agent_state() -> str:
+    """Returns the last written state string, e.g. 'RUNNING' or 'INTENTIONAL_SHUTDOWN'."""
+    try:
+        with open(_STATE_FILE, "r") as f:
+            content = f.read().strip()
+        parts = content.split("|", 1)
+        return parts[1] if len(parts) == 2 else "UNKNOWN"
+    except Exception:
+        return "UNKNOWN"
+
+
+def _can_restart() -> bool:
+    """Returns False if we've already restarted too many times in the last hour."""
+    now = time.time()
+    _restart_timestamps[:] = [t for t in _restart_timestamps if now - t < 3600]
+    if len(_restart_timestamps) >= _MAX_RESTARTS_PER_HOUR:
+        log.warning("Restart limit reached (%d/hour). Waiting before next restart.", _MAX_RESTARTS_PER_HOUR)
+        return False
+    return True
+
 try:
     import psutil
 except ImportError:
@@ -89,8 +114,14 @@ def watchdog_main():
     while True:
         try:
             if not _is_process_running(AGENT_EXE_NAME):
-                log.warning("Agent not running! Restarting...")
-                if os.path.exists(agent_path):
+                state = _read_agent_state()
+                if state == "INTENTIONAL_SHUTDOWN":
+                    log.info("Agent was intentionally shut down — not restarting.")
+                elif not _can_restart():
+                    log.warning("Too many restarts in last hour — skipping restart. Will retry next cycle.")
+                elif os.path.exists(agent_path):
+                    log.warning("Agent not running (state=%s)! Restarting...", state)
+                    _restart_timestamps.append(time.time())
                     _start_process(agent_path)
                 else:
                     log.error("Agent exe not found at %s", agent_path)

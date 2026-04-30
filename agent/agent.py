@@ -68,12 +68,29 @@ def _acquire_single_instance() -> bool:
     global _mutex_handle
     try:
         handle = _ctypes.windll.kernel32.CreateMutexW(None, True, _MUTEX_NAME)
-        if _ctypes.windll.kernel32.GetLastError() == 183:  # ERROR_ALREADY_EXISTS
+        last_err = _ctypes.windll.kernel32.GetLastError()
+        if last_err == 183:  # ERROR_ALREADY_EXISTS
+            log.warning("Single-instance mutex already held — another instance is running.")
             return False
         _mutex_handle = handle
+        log.debug("Single-instance mutex acquired.")
         return True
-    except Exception:
-        return True  # If we can't check, allow startup
+    except Exception as e:
+        log.error("Single-instance mutex check failed: %s — refusing startup to be safe.", e)
+        return False  # Block startup if we can't verify
+
+
+# ─── Agent State File (used by watchdog to avoid restart loops) ───────────────
+_STATE_FILE = os.path.join(r"C:\ProgramData\EmployeeMonitor", "agent_state.txt")
+
+
+def _write_state(state: str) -> None:
+    try:
+        os.makedirs(os.path.dirname(_STATE_FILE), exist_ok=True)
+        with open(_STATE_FILE, "w") as f:
+            f.write(f"{int(time.time())}|{state}")
+    except Exception as e:
+        log.debug("State file write failed: %s", e)
 
 
 # ─── Global Config (shared across threads) ───────────────────────────────────
@@ -107,6 +124,7 @@ def _report_shutdown() -> None:
     if _shutdown_reported:
         return
     _shutdown_reported = True
+    _write_state("INTENTIONAL_SHUTDOWN")
     try:
         if _config.get("agentToken"):
             # Flush any buffered errors before shutdown
@@ -534,9 +552,6 @@ def _wait_for_network(timeout: int = 120) -> bool:
 
 # ─── Self-Update via AgentVersion API ────────────────────────────────────────
 
-CURRENT_VERSION = "1.0.0"
-
-
 def check_for_update(server_url: str) -> None:
     """Check /api/agent/latest-version, download + verify + launch if newer."""
     try:
@@ -546,11 +561,11 @@ def check_for_update(server_url: str) -> None:
             log.debug("Update check returned %s", res.status_code)
             return
         data = res.json()
-        if data.get("version") == CURRENT_VERSION:
-            log.info("Agent is up to date (%s)", CURRENT_VERSION)
+        if data.get("version") == VERSION:
+            log.info("Agent is up to date (%s)", VERSION)
             return
 
-        log.info("New version available: %s (current: %s) — downloading", data["version"], CURRENT_VERSION)
+        log.info("New version available: %s (current: %s) — downloading", data["version"], VERSION)
         tmp = os.path.join(tempfile.gettempdir(), "EMUpdate.exe")
         r = _req.get(data["downloadUrl"], stream=True, timeout=60)
         with open(tmp, "wb") as f:
@@ -632,8 +647,11 @@ def main():
     # 6. Initialize offline queue DB
     init_db()
 
+    # Mark agent as running (watchdog reads this to avoid restart loops)
+    _write_state("RUNNING")
+
     # 7. Start system tray (separate thread) - only if enabled in config
-    if _config.get("showTrayIcon", True):
+    if _config.get("showTrayIcon", False):
         tray_thread = Thread(target=start_tray, daemon=True)
         tray_thread.start()
 

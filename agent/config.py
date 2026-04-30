@@ -17,7 +17,7 @@ DEFAULT_CONFIG = {
     "usbMonitoringEnabled": True,
     "clipboardEnabled": False,
     "blockedSites": [],
-    "showTrayIcon": True,
+    "showTrayIcon": False,
 }
 
 
