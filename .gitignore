@@ -13,3 +13,7 @@ out/
 .errors/
 *.zip
 nul
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
