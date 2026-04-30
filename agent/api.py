@@ -210,7 +210,9 @@ def upload_screenshot(cfg: dict, file_path: str, metadata: dict) -> dict | None:
         return None
     try:
         with open(file_path, "rb") as f:
-            headers = {"x-agent-token": cfg.get("agentToken", "")}
+            # Content-Type must be None to remove session-level application/json
+            # so requests can set multipart/form-data boundary correctly
+            headers = {"x-agent-token": cfg.get("agentToken", ""), "Content-Type": None}
             r = _session.post(
                 _url(cfg, "/screenshot"),
                 headers=headers,

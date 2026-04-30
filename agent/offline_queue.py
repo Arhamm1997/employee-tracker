@@ -33,6 +33,10 @@ def _resolve_db_path() -> str:
             with open(candidate + ".writetest", "ab") as fh:
                 fh.write(b"")
             os.remove(candidate + ".writetest")
+            # Also verify existing DB file is writable (not just the directory)
+            if os.path.exists(candidate):
+                with open(candidate, "ab"):
+                    pass
             return candidate
         except (PermissionError, OSError) as e:
             log.warning(
